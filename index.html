@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>HFVS Decision Tool — Kenya Affordable Housing Programme</title>
+<title>HFVS Decision Tool: Kenya Affordable Housing Programme</title>
 <meta name="description" content="Housing Financial Vulnerability Score (HFVS) decision-support dashboard for Kenya's Affordable Housing Programme: county vulnerability map, AI model performance, vulnerability drivers, and Housing Levy budget allocation." />
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="styles.css" />
@@ -35,7 +35,7 @@
   <section class="panel active" id="panel-overview">
     <div class="hero">
       <span class="hero-kicker">The headline finding</span>
-      <h2>The Housing Levy can fund <strong>every county</strong> — what's missing is delivery capacity, not money</h2>
+      <h2>The Housing Levy can fund <strong>every county</strong>. What's missing is delivery capacity, not money</h2>
       <p>At the official 200,000-units-per-year target, the entire surveyed housing backlog of vulnerable households
       (15,365 units, ≈ KSh 50.6B) fits inside one year's levy collection (≈ KSh 73.2B). Yet only
       <strong>1,795 units</strong> were actually completed in FY2024/25. The bottleneck is building, not budgeting.</p>
@@ -91,7 +91,7 @@
       <div class="card"><h3>How the model improved step by step</h3>
         <p class="muted">Ability to explain a household's housing-cost burden (share of variation explained).</p>
         <canvas id="chart-model-chain" height="260"></canvas>
-        <p class="footnote">A simple linear model explains only 23% of the variation. The final two-stage AI model explains <b>62%</b> for renters — a +39-point gain — by first predicting <i>whether</i> a household bears a cost burden, then <i>how much</i>.</p>
+        <p class="footnote">A simple linear model explains only 23% of the variation. The final two-stage AI model explains <b>62%</b> for renters (a +39-point gain) by first predicting <i>whether</i> a household bears a cost burden, then <i>how much</i>.</p>
       </div>
       <div class="card"><h3>What the model looks at</h3>
         <p class="muted">Top drivers of the prediction (SHAP importance).</p>
@@ -107,9 +107,9 @@
   <section class="panel" id="panel-drivers">
     <div class="card">
       <h3>The five pillars of housing vulnerability</h3>
-      <p class="muted">The HFVS is built from five dimensions. Their importance is learned from data, not assumed — and <b>tenure insecurity</b> (not being secure in your home) matters more than anything else.</p>
+      <p class="muted">The HFVS is built from five dimensions. Their importance is learned from data, not assumed, and <b>tenure insecurity</b> (not being secure in your home) matters more than anything else.</p>
       <canvas id="chart-pillars" height="260"></canvas>
-      <p class="footnote">Maximum overlap between pillars is 0.47 — they measure genuinely different things. Scoring with equal weights instead of learned weights still ranks 84% of households the same way (Spearman 0.84), so the result is robust.</p>
+      <p class="footnote">Maximum overlap between pillars is 0.47; they measure genuinely different things. Scoring with equal weights instead of learned weights still ranks 84% of households the same way (Spearman 0.84), so the result is robust.</p>
     </div>
     <div class="grid-2">
       <div class="card"><h3>What this means in plain terms</h3>
@@ -130,7 +130,7 @@
     <div class="hero hero-alt">
       <span class="hero-kicker">The optimisation result</span>
       <h2>Spreading the budget across all 47 counties costs <strong>nothing extra</strong></h2>
-      <p>Focusing money in 19 counties (Regime A) or covering every county (Regime B) costs the same ≈ KSh 19.75B for 6,000 units —
+      <p>Focusing money in 19 counties (Regime A) or covering every county (Regime B) costs the same ≈ KSh 19.75B for 6,000 units,
       only 27% of one year's levy. Equity is effectively <strong>free</strong>; the real constraint is how fast Kenya can build.</p>
     </div>
     <div class="stat-grid" id="budget-stats"></div>
@@ -141,7 +141,7 @@
       </div>
       <div class="card"><h3>The aspirational scenario</h3>
         <canvas id="chart-aspirational" height="240"></canvas>
-        <p class="footnote">At the official 200,000-unit target, the full 15,365-unit backlog (KSh 50.58B) is affordable within the KSh 73.2B levy — but only 1,795 units were completed in FY2024/25.</p>
+        <p class="footnote">At the official 200,000-unit target, the full 15,365-unit backlog (KSh 50.58B) is affordable within the KSh 73.2B levy, but only 1,795 units were completed in FY2024/25.</p>
       </div>
     </div>
     <div class="card">

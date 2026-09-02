@@ -54,7 +54,7 @@ function renderOverview() {
     { value: pct(n.high_critical_share_pct), label: "of households are High or Critical vulnerability", tone: "alert" },
     { value: pct(n.champion_model.r2 * 100, 0), label: "of cost-burden variation explained by the final AI model", tone: "good" },
     { value: fmtB(n.total_levy_budget_ksh), label: "Housing Levy collected in FY2024/25" },
-    { value: fmt(n.fy24_25_completions, 0), label: "units actually completed FY2024/25 — the real bottleneck", tone: "alert" },
+    { value: fmt(n.fy24_25_completions, 0), label: "units actually completed FY2024/25 (the real bottleneck)", tone: "alert" },
   ]);
 
   const tiers = n.tier_distribution;
@@ -80,7 +80,7 @@ function renderOverview() {
 function renderModel() {
   const n = state.national;
   statGrid($("#model-stats"), [
-    { value: pct(n.champion_model.r2 * 100, 0), label: `variation explained — champion: ${n.champion_model.name}`, tone: "good" },
+    { value: pct(n.champion_model.r2 * 100, 0), label: `variation explained (champion: ${n.champion_model.name})`, tone: "good" },
     { value: "+" + pct(n.ai_advantage_r2 * 100, 0), label: "gain over a simple linear model" },
     { value: n.stage1_classifier.roc_auc.toFixed(3), label: "accuracy (ROC-AUC) of the stage-1 'is this household burdened?' classifier" },
     { value: "15,365", label: "unit shortfall covered if the levy were spent at full official target" },
@@ -106,11 +106,11 @@ function renderModel() {
 
 // ---------- drivers ----------
 const PILLAR_PLAIN = {
-  D1: "Financial Stress — how tight the household budget is: low or informal income, heavy spending on housing relative to earnings.",
-  D2: "Tenure Insecurity — not being secure in your home: renting without a written lease, living in a building without approval, risk of eviction.",
-  D3: "Physical Hazard — exposure to floods, poor drainage, or unsafe neighbourhood conditions around the dwelling.",
-  D4: "Dwelling Quality — the physical state of the home: walls, roof, floor, crowding and space per person.",
-  D5: "Utility Deprivation — lacking reliable water, sanitation, or electricity services.",
+  D1: "Financial Stress: how tight the household budget is; low or informal income, heavy spending on housing relative to earnings.",
+  D2: "Tenure Insecurity: not being secure in your home; renting without a written lease, living in a building without approval, risk of eviction.",
+  D3: "Physical Hazard: exposure to floods, poor drainage, or unsafe neighbourhood conditions around the dwelling.",
+  D4: "Dwelling Quality: the physical state of the home; walls, roof, floor, crowding and space per person.",
+  D5: "Utility Deprivation: lacking reliable water, sanitation, or electricity services.",
 };
 const PILLAR_COLORS = ["#0b4f6c", "#d64541", "#e8a13a", "#2e9e6b", "#7a5ea8"];
 
@@ -126,7 +126,7 @@ function renderDrivers() {
   });
 
   $("#pillar-plain").innerHTML = p.map((x, i) =>
-    `<li><span class="dot" style="background:${PILLAR_COLORS[i]}">${x.code}</span><b>${x.name} — ${pct(x.beta_weight * 100, 0)} of the score.</b> ${PILLAR_PLAIN[x.code]}</li>`).join("");
+    `<li><span class="dot" style="background:${PILLAR_COLORS[i]}">${x.code}</span><b>${x.name}: ${pct(x.beta_weight * 100, 0)} of the score.</b> ${PILLAR_PLAIN[x.code]}</li>`).join("");
 
   const cs = [...state.counties].filter(c => c.hfvs_mean != null).sort((a, b) => b.hfvs_mean - a.hfvs_mean).slice(0, 12);
   new Chart($("#chart-pillar-county"), {
@@ -149,11 +149,11 @@ function renderDrivers() {
 function renderBudget() {
   const m = state.milp;
   statGrid($("#budget-stats"), [
-    { value: fmtB(m.regime_a.total_cost_ksh), label: "cost of the 6,000-unit programme — identical under both regimes", tone: "good" },
+    { value: fmtB(m.regime_a.total_cost_ksh), label: "cost of the 6,000-unit programme (identical under both regimes)", tone: "good" },
     { value: `${m.regime_a.counties_activated}/47`, label: "counties funded under Capital Concentration (Regime A)" },
     { value: `${m.regime_b.counties_activated}/47`, label: "counties funded under Universal Coverage (Regime B)" },
-    { value: fmtB(m.total_budget_ksh), label: "total FY2024/25 levy — the programme uses just 27%" },
-    { value: fmt(m.aspirational.backlog_units, 0), label: "unit backlog — fully fundable at the official 200,000-unit target", tone: "good" },
+    { value: fmtB(m.total_budget_ksh), label: "total FY2024/25 levy (the programme uses just 27%)" },
+    { value: fmt(m.aspirational.backlog_units, 0), label: "unit backlog (fully fundable at the official 200,000-unit target)", tone: "good" },
   ]);
 
   new Chart($("#chart-regimes"), {
@@ -209,8 +209,9 @@ const rampColor = (t) => RAMP[Math.min(4, Math.floor(t * 5))];
 
 function initMap() {
   state.map = L.map("map", { scrollWheelZoom: true }).setView([0.42, 37.9], 6);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 12,
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 12,
   }).addTo(state.map);
 
   state.mapLayers = L.geoJSON(state.geo, {
@@ -220,7 +221,7 @@ function initMap() {
       layer.bindPopup(c ? countyPopup(c) : `<div class="county-tip"><b>${feat.properties.county_name}</b><br>No survey data.</div>`);
       layer.on({
         mouseover: e => e.target.setStyle({ weight: 2.5, color: "#0b3550" }),
-        mouseout: e => state.mapLayers.resetStyle(e.target),
+        mouseout: e => e.target.setStyle({ weight: 1, color: "#fff" }),
       });
     },
   }).addTo(state.map);
@@ -272,7 +273,7 @@ function countyPopup(c, metricKey) {
 
 
 // ---------- per-tab RAG chat ----------
-const CHAT_GREETING = "I'm the HFVS analyst. I can explain any of the numbers on this tab — where they come from, what they mean for the Affordable Housing Programme, and how counties compare. What would you like to know?";
+const CHAT_GREETING = "I'm the HFVS analyst. I can explain any of the numbers on this tab: where they come from, what they mean for the Affordable Housing Programme, and how counties compare. What would you like to know?";
 
 function initChats() {
   $$(".chat").forEach(box => {
@@ -326,7 +327,7 @@ async function ask(log, tab, question) {
     state.chats[tab].history.push({ role: "user", content: question }, { role: "assistant", content: data.answer });
   } catch (e) {
     typing.className = "msg bot err";
-    typing.innerHTML = `<b>Sorry — the assistant is unavailable.</b><br>${e.message}<br><br>If running locally, start with <code>vercel dev</code> and set <code>GROQ_API_KEY</code>.`;
+    typing.innerHTML = `<b>Sorry, the assistant is unavailable.</b><br>${e.message}<br><br>If running locally, start with <code>vercel dev</code> and set <code>GROQ_API_KEY</code>.`;
   }
   log.scrollTop = log.scrollHeight;
 }
