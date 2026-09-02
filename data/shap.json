@@ -1,0 +1,79 @@
+{
+ "top_features": [
+  {
+   "feature": "income_bracket_midpoint_ksh",
+   "label": "Household income bracket",
+   "mean_abs_shap": 0.05166
+  },
+  {
+   "feature": "dwelling_tenure_type_code",
+   "label": "Tenure type (own vs rent)",
+   "mean_abs_shap": 0.02112
+  },
+  {
+   "feature": "monthly_expenditure_water_ksh",
+   "label": "Monthly water spend",
+   "mean_abs_shap": 0.00997
+  },
+  {
+   "feature": "dwelling_floor_area_sqm",
+   "label": "Floor area (sqm)",
+   "mean_abs_shap": 0.00761
+  },
+  {
+   "feature": "dwelling_in_approved_building",
+   "label": "Lives in approved building",
+   "mean_abs_shap": 0.00676
+  },
+  {
+   "feature": "dwelling_type_code",
+   "label": "Dwelling type",
+   "mean_abs_shap": 0.00601
+  },
+  {
+   "feature": "monthly_expenditure_electricity_ksh",
+   "label": "Monthly electricity spend",
+   "mean_abs_shap": 0.00503
+  },
+  {
+   "feature": "county_housing_backlog",
+   "label": "County housing backlog",
+   "mean_abs_shap": 0.00489
+  },
+  {
+   "feature": "selected_respondent_age",
+   "label": "Household head age",
+   "mean_abs_shap": 0.00363
+  },
+  {
+   "feature": "county_financier_npl_ratio_pct",
+   "label": "County financier NPL ratio",
+   "mean_abs_shap": 0.00362
+  },
+  {
+   "feature": "hh_overcrowding_persons_per_room",
+   "label": "Overcrowding (persons/room)",
+   "mean_abs_shap": 0.00331
+  },
+  {
+   "feature": "county_water_storage_capacity_m3",
+   "label": "County water storage capacity",
+   "mean_abs_shap": 0.00308
+  },
+  {
+   "feature": "is_urban_household",
+   "label": "Urban household",
+   "mean_abs_shap": 0.00295
+  },
+  {
+   "feature": "highest_education_isced_level",
+   "label": "Education level",
+   "mean_abs_shap": 0.00277
+  },
+  {
+   "feature": "county_planning_staff_count",
+   "label": "County planning staff",
+   "mean_abs_shap": 0.00252
+  }
+ ]
+}

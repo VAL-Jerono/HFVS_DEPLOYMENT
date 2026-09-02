@@ -1,0 +1,36 @@
+{
+ "pillars": [
+  {
+   "code": "D1",
+   "name": "Financial Stress",
+   "beta_weight": 0.241,
+   "raw_shap_share": 0.243
+  },
+  {
+   "code": "D2",
+   "name": "Tenure Insecurity",
+   "beta_weight": 0.352,
+   "raw_shap_share": 0.354
+  },
+  {
+   "code": "D3",
+   "name": "Physical Hazard",
+   "beta_weight": 0.129,
+   "raw_shap_share": 0.13
+  },
+  {
+   "code": "D4",
+   "name": "Dwelling Quality",
+   "beta_weight": 0.179,
+   "raw_shap_share": 0.181
+  },
+  {
+   "code": "D5",
+   "name": "Utility Deprivation",
+   "beta_weight": 0.099,
+   "raw_shap_share": 0.092
+  }
+ ],
+ "max_pairwise_pillar_corr": 0.469,
+ "spearman_shap_vs_equal_weight": 0.8372
+}

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HFVS Decision Tool — Kenya Affordable Housing Programme</title>
+<meta name="description" content="Housing Financial Vulnerability Score (HFVS) decision-support dashboard for Kenya's Affordable Housing Programme: county vulnerability map, AI model performance, vulnerability drivers, and Housing Levy budget allocation." />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="styles.css" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">HFVS</div>
+      <div>
+        <h1>Housing Vulnerability Decision Tool</h1>
+        <p>Kenya Affordable Housing Programme · 21,347 households · 47 counties · Kenya Housing Survey 2023/24</p>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs" role="tablist">
+      <button class="tab active" data-tab="overview" role="tab">Overview</button>
+      <button class="tab" data-tab="map" role="tab">County Map</button>
+      <button class="tab" data-tab="model" role="tab">Model Performance</button>
+      <button class="tab" data-tab="drivers" role="tab">Vulnerability Drivers</button>
+      <button class="tab" data-tab="budget" role="tab">Budget Allocation</button>
+      <button class="tab" data-tab="analyst" role="tab">Ask the Analyst</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ============ OVERVIEW ============ -->
+  <section class="panel active" id="panel-overview">
+    <div class="hero">
+      <span class="hero-kicker">The headline finding</span>
+      <h2>The Housing Levy can fund <strong>every county</strong> — what's missing is delivery capacity, not money</h2>
+      <p>At the official 200,000-units-per-year target, the entire surveyed housing backlog of vulnerable households
+      (15,365 units, ≈ KSh 50.6B) fits inside one year's levy collection (≈ KSh 73.2B). Yet only
+      <strong>1,795 units</strong> were actually completed in FY2024/25. The bottleneck is building, not budgeting.</p>
+    </div>
+    <div class="stat-grid" id="overview-stats"></div>
+    <div class="grid-2">
+      <div class="card"><h3>Who is most exposed?</h3>
+        <p class="muted">Share of households by vulnerability tier (HFVS).</p>
+        <canvas id="chart-tiers" height="240"></canvas>
+        <p class="footnote">Nearly half of surveyed households (47.1%) fall in the <b>High</b> or <b>Critical</b> vulnerability tiers. A model that only looks at housing costs would miss most of them.</p>
+      </div>
+      <div class="card"><h3>Vulnerable population by county</h3>
+        <p class="muted">2026 projected population, coloured by county-average vulnerability score.</p>
+        <canvas id="chart-pop-vuln" height="240"></canvas>
+      </div>
+    </div>
+    <div class="card chat-card">
+      <h3>💬 Ask about this overview</h3>
+      <div class="chat" data-chat-tab="overview"></div>
+    </div>
+  </section>
+
+  <!-- ============ MAP ============ -->
+  <section class="panel" id="panel-map">
+    <div class="card">
+      <div class="map-controls">
+        <h3>Interactive county map</h3>
+        <div class="control-row">
+          <label for="map-metric">Colour counties by</label>
+          <select id="map-metric">
+            <option value="hfvs_mean">Vulnerability score (HFVS)</option>
+            <option value="theta_ccr">Delivery efficiency (DEA)</option>
+            <option value="unit_cost_ksh">Cost per housing unit</option>
+            <option value="milp_units_regime_b">Units allocated (Regime B)</option>
+            <option value="pct_top_decile_vulnerable">% in most-vulnerable decile</option>
+          </select>
+        </div>
+      </div>
+      <div id="map"></div>
+      <div class="map-legend-wrap"><div id="map-legend" class="map-legend"></div></div>
+      <p class="footnote">Click any county for its full profile. Colours update with the selected measure.</p>
+    </div>
+    <div class="card chat-card">
+      <h3>💬 Ask about the map</h3>
+      <div class="chat" data-chat-tab="map"></div>
+    </div>
+  </section>
+
+  <!-- ============ MODEL ============ -->
+  <section class="panel" id="panel-model">
+    <div class="stat-grid" id="model-stats"></div>
+    <div class="grid-2">
+      <div class="card"><h3>How the model improved step by step</h3>
+        <p class="muted">Ability to explain a household's housing-cost burden (share of variation explained).</p>
+        <canvas id="chart-model-chain" height="260"></canvas>
+        <p class="footnote">A simple linear model explains only 23% of the variation. The final two-stage AI model explains <b>62%</b> for renters — a +39-point gain — by first predicting <i>whether</i> a household bears a cost burden, then <i>how much</i>.</p>
+      </div>
+      <div class="card"><h3>What the model looks at</h3>
+        <p class="muted">Top drivers of the prediction (SHAP importance).</p>
+        <canvas id="chart-shap" height="260"></canvas>
+      </div>
+    </div>
+    <div class="card chat-card">
+      <h3>💬 Ask about the model</h3>
+      <div class="chat" data-chat-tab="model"></div>
+    </div>
+  </section>
+  <!-- ============ DRIVERS ============ -->
+  <section class="panel" id="panel-drivers">
+    <div class="card">
+      <h3>The five pillars of housing vulnerability</h3>
+      <p class="muted">The HFVS is built from five dimensions. Their importance is learned from data, not assumed — and <b>tenure insecurity</b> (not being secure in your home) matters more than anything else.</p>
+      <canvas id="chart-pillars" height="260"></canvas>
+      <p class="footnote">Maximum overlap between pillars is 0.47 — they measure genuinely different things. Scoring with equal weights instead of learned weights still ranks 84% of households the same way (Spearman 0.84), so the result is robust.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card"><h3>What this means in plain terms</h3>
+        <ul class="plain-list" id="pillar-plain"></ul>
+      </div>
+      <div class="card"><h3>County-average vulnerability (top 12)</h3>
+        <canvas id="chart-pillar-county" height="300"></canvas>
+      </div>
+    </div>
+    <div class="card chat-card">
+      <h3>💬 Ask about vulnerability drivers</h3>
+      <div class="chat" data-chat-tab="drivers"></div>
+    </div>
+  </section>
+
+  <!-- ============ BUDGET ============ -->
+  <section class="panel" id="panel-budget">
+    <div class="hero hero-alt">
+      <span class="hero-kicker">The optimisation result</span>
+      <h2>Spreading the budget across all 47 counties costs <strong>nothing extra</strong></h2>
+      <p>Focusing money in 19 counties (Regime A) or covering every county (Regime B) costs the same ≈ KSh 19.75B for 6,000 units —
+      only 27% of one year's levy. Equity is effectively <strong>free</strong>; the real constraint is how fast Kenya can build.</p>
+    </div>
+    <div class="stat-grid" id="budget-stats"></div>
+    <div class="grid-2">
+      <div class="card"><h3>Two ways to spend the same money</h3>
+        <canvas id="chart-regimes" height="240"></canvas>
+        <p class="footnote">Regime A concentrates units in 19 counties; Regime B serves all 47. Same 6,000 units, same cost.</p>
+      </div>
+      <div class="card"><h3>The aspirational scenario</h3>
+        <canvas id="chart-aspirational" height="240"></canvas>
+        <p class="footnote">At the official 200,000-unit target, the full 15,365-unit backlog (KSh 50.58B) is affordable within the KSh 73.2B levy — but only 1,795 units were completed in FY2024/25.</p>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Where the money goes (Regime B, top 15)</h3>
+      <div class="table-wrap"><table id="budget-table" class="data-table"></table></div>
+    </div>
+    <div class="card chat-card">
+      <h3>💬 Ask about the budget</h3>
+      <div class="chat" data-chat-tab="budget"></div>
+    </div>
+  </section>
+
+  <!-- ============ ANALYST ============ -->
+  <section class="panel" id="panel-analyst">
+    <div class="card">
+      <h3>Ask the Analyst</h3>
+      <p class="muted">A cross-cutting assistant with access to the national summary, per-county results, vulnerability drivers and budget allocations. Try one of these:</p>
+      <div class="suggestions">
+        <button class="sugg">Which 5 counties should get AHP projects first, and why?</button>
+        <button class="sugg">Why does the model beat a simple cost-only screening rule?</button>
+        <button class="sugg">Is the Housing Levy enough to solve the backlog?</button>
+        <button class="sugg">Compare Nairobi and West Pokot as investment cases.</button>
+      </div>
+      <div class="chat" data-chat-tab="analyst"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>Built from the HFVS Vulnerability Chain dissertation analysis · Kenya Housing Survey 2023/24 (21,347 households, 47 counties).
+  All figures are pre-computed research results; the AI assistant explains them but never invents numbers.</p>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

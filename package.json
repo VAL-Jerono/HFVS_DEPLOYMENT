@@ -1,0 +1,10 @@
+{
+  "name": "hfvs-deployment",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HFVS Housing Vulnerability Decision Tool — static dashboard + Groq RAG assistant, deployed on Vercel",
+  "scripts": {
+    "build:data": "python3 build_data.py",
+    "dev": "vercel dev"
+  }
+}
