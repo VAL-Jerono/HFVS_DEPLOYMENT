@@ -102,6 +102,7 @@ function renderModel() {
     data: { labels: sh.map(f => f.label), datasets: [{ data: sh.map(f => f.mean_abs_shap), backgroundColor: "#0b4f6c", borderRadius: 5 }] },
     options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: "Importance (mean |SHAP|)" } } } },
   });
+}
 
 // ---------- drivers ----------
 const PILLAR_PLAIN = {
@@ -331,5 +332,3 @@ async function ask(log, tab, question) {
 }
 
 boot();
-
-}
