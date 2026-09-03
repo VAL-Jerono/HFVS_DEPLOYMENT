@@ -71,7 +71,7 @@ function renderOverview() {
     options: {
       indexAxis: "y", maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => [`HFVS: ${c.parsed.x.toFixed(3)}`, `2026 population: ${fmt(cs[c.dataIndex].population_2026_est, 0)}`] } } },
-      scales: { x: { title: { display: true, text: "Vulnerability score (higher = more vulnerable)" } }, y: { ticks: { font: { size: 9.5 } } } },
+      scales: { x: { title: { display: true, text: "Vulnerability score (higher = more vulnerable)" } }, y: { ticks: { font: { size: 8.5 }, autoSkip: false, maxTicksLimit: 47 } } },
     },
   });
 }
@@ -81,10 +81,39 @@ function renderModel() {
   const n = state.national;
   statGrid($("#model-stats"), [
     { value: pct(n.champion_model.r2 * 100, 0), label: `variation explained (champion: ${n.champion_model.name})`, tone: "good" },
-    { value: "+" + pct(n.ai_advantage_r2 * 100, 0), label: "gain over a simple linear model" },
-    { value: n.stage1_classifier.roc_auc.toFixed(3), label: "accuracy (ROC-AUC) of the stage-1 'is this household burdened?' classifier" },
-    { value: "15,365", label: "unit shortfall covered if the levy were spent at full official target" },
+    { value: "+" + pct(n.ai_advantage_r2 * 100, 0), label: "gain over a simple linear model", tone: "good" },
+    { value: n.stage1_classifier.roc_auc.toFixed(3), label: "stage-1 classifier ROC-AUC ('is this household burdened?')", tone: "warn" },
+    { value: fmt(n.milp_backlog_units ?? 15365, 0), label: "unit shortfall covered if the levy were spent at full official target", tone: "alert" },
   ]);
+  const aucEl = $("#auc-inline"); if (aucEl) aucEl.textContent = n.stage1_classifier.roc_auc.toFixed(3);
+
+  // DEA / SBM validation stats
+  if (n.sbm_available) {
+    statGrid($("#dea-stats"), [
+      { value: n.dea_mean_theta_ccr.toFixed(3), label: "mean radial efficiency θ (CCR)", tone: "warn" },
+      { value: n.sbm_mean_rho_bc.toFixed(3), label: "mean non-radial efficiency ρ (SBM, bias-corrected)", tone: "good" },
+      { value: "+" + n.sbm_radial_masking_gap.toFixed(3), label: "radial masking gap — slack the radial score hides", tone: "alert" },
+      { value: `${n.dea_frontier_counties}/47`, label: "counties on the efficiency frontier", tone: "" },
+    ]);
+    // biggest θ-vs-ρ divergences
+    const div = [...state.counties].filter(c => c.theta_ccr != null && c.rho_sbm_bc != null)
+      .sort((a, b) => (b.theta_ccr - b.rho_sbm_bc) - (a.theta_ccr - a.rho_sbm_bc)).slice(0, 10);
+    new Chart($("#chart-dea-gap"), {
+      type: "bar",
+      data: {
+        labels: div.map(c => c.county),
+        datasets: [
+          { label: "Radial θ (CCR)", data: div.map(c => c.theta_ccr), backgroundColor: "#7fb3c8", borderRadius: 5 },
+          { label: "Non-radial ρ (SBM, bias-corrected)", data: div.map(c => c.rho_sbm_bc), backgroundColor: "#0b4f6c", borderRadius: 5 },
+        ],
+      },
+      options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed.y.toFixed(3)}` } } },
+        scales: { y: { min: 0, max: 1, ticks: { callback: v => v.toFixed(1) } }, x: { ticks: { font: { size: 10 }, maxRotation: 35, minRotation: 25 } } },
+      },
+    });
+  }
 
   const chain = n.model_chain;
   new Chart($("#chart-model-chain"), {
@@ -201,6 +230,37 @@ function renderBudget() {
     },
   });
 
+  // Cross-tier consistency check (proposal §3.5): need (HFVS) vs efficiency (SBM ρ),
+  // point size = Regime A units — do high-need/low-efficiency counties shift between regimes?
+  const cc = state.counties.filter(c => c.hfvs_mean != null && c.rho_sbm_bc != null);
+  new Chart($("#chart-consistency"), {
+    type: "scatter",
+    data: { datasets: [{
+      data: cc.map(c => ({ x: c.hfvs_mean, y: c.rho_sbm_bc, c })),
+      backgroundColor: cc.map(c => BINDING_COLORS[c.binding_A] || "#b9c1cc"),
+      pointRadius: cc.map(c => c.units_A ? 4 + Math.min(10, 10 * Math.sqrt(c.units_A / 960)) : 3),
+      pointOpacity: 0.85,
+    }]},
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: (t) => { const c = t.raw.c; return [
+            `${c.county}`,
+            `Vulnerability (HFVS): ${c.hfvs_mean.toFixed(3)}`,
+            `Efficiency (SBM ρ): ${c.rho_sbm_bc.toFixed(3)}`,
+            `Units A: ${fmt(c.units_A ?? 0, 0)} · Binds: ${c.binding_A ?? "—"}`,
+          ]; },
+        }},
+      },
+      scales: {
+        x: { title: { display: true, text: "Need (HFVS vulnerability →)" } },
+        y: { title: { display: true, text: "Efficiency (SBM ρ →)" }, min: 0, max: 1 },
+      },
+    },
+  });
+
   new Chart($("#chart-aspirational"), {
     type: "bar",
     data: {
@@ -260,6 +320,7 @@ function initMap() {
     onEachFeature: (feat, layer) => {
       const c = countyByFeature(feat);
       layer.bindPopup(c ? countyPopup(c) : `<div class="county-tip"><b>${feat.properties.county_name}</b><br>No survey data.</div>`);
+      layer.bindTooltip(countyHover(c, feat), { sticky: true, className: "county-hover", opacity: 0.95 });
       layer.on({
         mouseover: e => e.target.setStyle({ weight: 2.5, color: "#0b3550" }),
         mouseout: e => e.target.setStyle({ weight: 1, color: "#fff" }),
@@ -297,6 +358,18 @@ function paintMap() {
 function countyByFeature(f) {
   const n = f.properties.county_name;
   return state.counties.find(c => c.county === n);
+}
+
+// compact hover card — quick read, popup carries the full profile
+function countyHover(c, feat) {
+  if (!c) return `<b>${feat.properties.county_name}</b><br>No survey data`;
+  const bind = c.binding_A && c.binding_A !== "Not activated" ? c.binding_A : "not funded (A)";
+  return `<div class="county-hover-tip"><b>${c.county}</b><br>` +
+    `Vulnerability: <b>${c.hfvs_mean == null ? "—" : c.hfvs_mean.toFixed(3)}</b>` +
+    (c.rho_sbm_bc != null ? ` · Efficiency ρ: <b>${c.rho_sbm_bc.toFixed(3)}</b>` : "") + `<br>` +
+    `Capacity ceiling: <b>${c.capacity_ceiling_units == null ? "—" : fmt(c.capacity_ceiling_units, 0)}</b> units/yr<br>` +
+    `Binds on: <b>${bind}</b><br>` +
+    `<span style="opacity:.7">Click for full profile</span></div>`;
 }
 
 function countyPopup(c, metricKey) {

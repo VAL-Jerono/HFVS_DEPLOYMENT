@@ -50,8 +50,10 @@ main { max-width: 1240px; margin: 0 auto; padding: 26px 24px 60px; }
 .stat .k { font-size: 22px; font-weight: 800; color: var(--brand); letter-spacing: -.3px; }
 .stat .k small { font-size: 13px; font-weight: 600; color: var(--muted); }
 .stat .l { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
-.stat.alert .k { color: var(--accent); }
-.stat.good .k { color: var(--good); }
+.stat { border-left: 4px solid var(--brand); background: linear-gradient(135deg, #ffffff 55%, #e9f2f8); }
+.stat.alert { border-left-color: var(--accent); background: linear-gradient(135deg, #ffffff 55%, #fdeeec); }
+.stat.good { border-left-color: var(--good); background: linear-gradient(135deg, #ffffff 55%, #e7f5ee); }
+.stat.warn { border-left-color: #e8a13a; background: linear-gradient(135deg, #ffffff 55%, #fdf3e2); }
 
 .plain-list { margin: 0; padding: 0; list-style: none; }
 .plain-list li { padding: 10px 0 10px 34px; position: relative; border-bottom: 1px solid var(--line); font-size: 14px; line-height: 1.55; }
@@ -87,7 +89,21 @@ select { font: inherit; font-size: 13.5px; padding: 8px 12px; border-radius: 9px
 /* Fixed-height chart containers: every Chart.js canvas lives inside a
    .chart-box and renders with maintainAspectRatio:false, so charts fill a
    predictable, frame-friendly height instead of ballooning to card width. */
+.stat.alert .k { color: var(--accent); }
+.stat.good .k { color: var(--good); }
+.stat.warn .k { color: #b57a12; }
+
 .chart-box { position: relative; height: 270px; width: 100%; }
 .chart-box.tall { height: 380px; }
 @media (max-width: 860px) { .chart-box { height: 240px; } .chart-box.tall { height: 340px; } }
+.chart-box.xtall { height: 780px; }
+@media (max-width: 860px) { .chart-box.xtall { height: 640px; } }
 .chart-box canvas { width: 100% !important; height: 100% !important; }
+
+/* map hover tooltip */
+.county-hover-tip { font-size: 12.5px; line-height: 1.5; }
+.leaflet-tooltip.county-hover {
+  background: #fff; border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(16,30,54,.18); color: var(--ink); padding: 8px 12px;
+}
+.leaflet-tooltip.county-hover::before { display: none; }

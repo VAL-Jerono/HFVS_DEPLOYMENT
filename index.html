@@ -35,21 +35,18 @@
   <section class="panel active" id="panel-overview">
     <div class="hero">
       <span class="hero-kicker">The headline finding</span>
-      <h2>The Housing Levy can fund <strong>every county</strong>. What's missing is delivery capacity, not money</h2>
-      <p>At the official 200,000-units-per-year target, the entire surveyed housing backlog of vulnerable households
-      (15,365 units, ≈ KSh 50.6B) fits inside one year's levy collection (≈ KSh 73.2B). Yet only
-      <strong>1,795 units</strong> were actually completed in FY2024/25. The bottleneck is building, not budgeting.</p>
+      <h2>The Levy can fund <strong>every county</strong> — the bottleneck is delivery capacity, not money</h2>
+      <p>Backlog of vulnerable households: <strong>15,365 units (≈ KSh 50.6B)</strong> — one year's levy is ≈ KSh 73.2B. Completed in FY2024/25: <strong>1,795 units</strong>.</p>
     </div>
     <div class="stat-grid" id="overview-stats"></div>
     <div class="grid-2">
       <div class="card"><h3>Who is most exposed?</h3>
-        <p class="muted">Share of households by vulnerability tier (HFVS).</p>
+        <p class="muted">Households by vulnerability tier.</p>
         <div class="chart-box"><canvas id="chart-tiers"></canvas></div>
-        <p class="footnote">Nearly half of surveyed households (47.1%) fall in the <b>High</b> or <b>Critical</b> vulnerability tiers. A model that only looks at housing costs would miss most of them.</p>
       </div>
-      <div class="card"><h3>Vulnerable population by county</h3>
-        <p class="muted">2026 projected population, coloured by county-average vulnerability score.</p>
-        <div class="chart-box tall"><canvas id="chart-pop-vuln"></canvas></div>
+      <div class="card"><h3>Vulnerability score by county</h3>
+        <p class="muted">County-average HFVS, all 47 counties.</p>
+        <div class="chart-box xtall"><canvas id="chart-pop-vuln"></canvas></div>
       </div>
     </div>
     <div class="card chat-card">
@@ -78,7 +75,7 @@
       </div>
       <div id="map"></div>
       <div class="map-legend-wrap"><div id="map-legend" class="map-legend"></div></div>
-      <p class="footnote">Click any county for its full profile. Colours update with the selected measure.</p>
+      <p class="footnote">Hover a county for a quick read; click for its full profile.</p>
     </div>
     <div class="card chat-card">
       <h3>💬 Ask about the map</h3>
@@ -91,14 +88,19 @@
     <div class="stat-grid" id="model-stats"></div>
     <div class="grid-2">
       <div class="card"><h3>How the model improved step by step</h3>
-        <p class="muted">Ability to explain a household's housing-cost burden (share of variation explained).</p>
+        <p class="muted">Share of housing-cost-burden variation explained.</p>
         <div class="chart-box"><canvas id="chart-model-chain"></canvas></div>
-        <p class="footnote">A simple linear model explains only 23% of the variation. The final two-stage AI model explains <b>62%</b> for renters (a +39-point gain) by first predicting <i>whether</i> a household bears a cost burden, then <i>how much</i>.</p>
+        <p class="footnote">Two-stage hurdle model: first <i>whether</i> a household bears a cost burden (ROC-AUC <b id="auc-inline">—</b>), then <i>how much</i>.</p>
       </div>
       <div class="card"><h3>What the model looks at</h3>
-        <p class="muted">Top drivers of the prediction (SHAP importance).</p>
+        <p class="muted">Top drivers (SHAP importance).</p>
         <div class="chart-box tall"><canvas id="chart-shap"></canvas></div>
       </div>
+    </div>
+    <div class="card"><h3>Efficiency validation — SBM vs radial DEA</h3>
+      <p class="muted">Non-radial SBM exposes slacks the radial score masks.</p>
+      <div class="stat-grid" id="dea-stats"></div>
+      <div class="chart-box" style="margin-top:16px;"><canvas id="chart-dea-gap"></canvas></div>
     </div>
     <div class="card chat-card">
       <h3>💬 Ask about the model</h3>
@@ -109,15 +111,14 @@
   <section class="panel" id="panel-drivers">
     <div class="card">
       <h3>The five pillars of housing vulnerability</h3>
-      <p class="muted">The HFVS is built from five dimensions. Their importance is learned from data, not assumed, and <b>tenure insecurity</b> (not being secure in your home) matters more than anything else.</p>
+      <p class="muted">Learned from data, not assumed — tenure insecurity matters most.</p>
       <div class="chart-box"><canvas id="chart-pillars"></canvas></div>
-      <p class="footnote">Maximum overlap between pillars is 0.47; they measure genuinely different things. Scoring with equal weights instead of learned weights still ranks 84% of households the same way (Spearman 0.84), so the result is robust.</p>
     </div>
     <div class="grid-2">
-      <div class="card"><h3>What this means in plain terms</h3>
+      <div class="card"><h3>In plain terms</h3>
         <ul class="plain-list" id="pillar-plain"></ul>
       </div>
-      <div class="card"><h3>County-average vulnerability (top 12)</h3>
+      <div class="card"><h3>Most vulnerable counties (top 12)</h3>
         <div class="chart-box tall"><canvas id="chart-pillar-county"></canvas></div>
       </div>
     </div>
@@ -131,11 +132,8 @@
   <section class="panel" id="panel-budget">
     <div class="hero hero-alt">
       <span class="hero-kicker">The optimisation result</span>
-      <h2>The bottleneck is <strong>county delivery capacity</strong>, not levy revenue</h2>
-      <p>The 6,000-unit delivery-constrained programme costs ≈ KSh 19.75B — just 27% of one year's levy — under every regime.
-      But the binding-constraint diagnosis shows <strong id="binding-headline">most funded counties</strong> are stopped by their own
-      delivery ceilings (permits, completions, financing), not by money. That's why the recommended policy is
-      <strong>Option C</strong>: capacity-building where capacity binds, cash where it doesn't.</p>
+      <h2>What binds: <strong>county delivery capacity</strong>, not levy revenue</h2>
+      <p>The 6,000-unit programme costs ≈ KSh 19.75B — just 27% of one year's levy. Most funded counties are stopped by their own delivery ceilings, not money. Recommended: <strong>Option C</strong> — capacity-building where capacity binds, cash where it doesn't.</p>
     </div>
     <div class="stat-grid" id="budget-stats"></div>
     <div class="grid-2">
@@ -157,6 +155,10 @@
         <div class="chart-box"><canvas id="chart-aspirational"></canvas></div>
         <p class="footnote">At the official 200,000-unit target, the full 15,365-unit backlog (KSh 50.58B) is affordable within the KSh 73.2B levy, but only 1,795 units were completed in FY2024/25.</p>
       </div>
+    </div>
+    <div class="card"><h3>Need vs efficiency vs allocation (cross-tier check)</h3>
+      <p class="muted">High-need, low-efficiency counties should shift between regimes — the proposal's consistency test.</p>
+      <div class="chart-box"><canvas id="chart-consistency"></canvas></div>
     </div>
     <div class="card">
       <h3>Where the money goes (Regime A, top 15)</h3>
