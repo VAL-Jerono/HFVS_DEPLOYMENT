@@ -33,11 +33,11 @@ function buildContext(tab) {
     pack.shap_top_features = cached("shap.json").top_features.slice(0, 10);
   } else if (tab === "budget") {
     pack.milp = cached("milp.json");
-    pack.county_budget = counties.map(c => ({ county: c.county, unit_cost_ksh: c.unit_cost_ksh, milp_units_regime_b: c.milp_units_regime_b, milp_cost_regime_b_ksh: c.milp_cost_regime_b_ksh, active_regime_b: c.active_regime_b, theta_ccr: c.theta_ccr, hfvs_mean: c.hfvs_mean }));
+    pack.county_budget = counties.map(c => ({ county: c.county, unit_cost_ksh: c.unit_cost_ksh, units_A: c.units_A, units_C: c.units_C, binding_A: c.binding_A, capacity_ceiling_units: c.capacity_ceiling_units, rho_sbm_bc: c.rho_sbm_bc, cost_A_ksh: c.cost_A_ksh, cost_C_ksh: c.cost_C_ksh, hfvs_mean: c.hfvs_mean }));
   } else { // analyst — cross-tier
     pack.pillars = cached("pillars.json");
     pack.milp = cached("milp.json");
-    pack.county_summary = counties.map(c => ({ county: c.county, hfvs_mean: c.hfvs_mean, theta_ccr: c.theta_ccr, unit_cost_ksh: c.unit_cost_ksh, milp_units_regime_b: c.milp_units_regime_b, is_ccr_frontier: c.is_ccr_frontier }));
+    pack.county_summary = counties.map(c => ({ county: c.county, hfvs_mean: c.hfvs_mean, rho_sbm_bc: c.rho_sbm_bc, rho_sbm_ci: c.rho_sbm_ci_low != null ? [c.rho_sbm_ci_low, c.rho_sbm_ci_high] : null, theta_ccr: c.theta_ccr, policy_quadrant: c.policy_quadrant, binding_A: c.binding_A, capacity_ceiling_units: c.capacity_ceiling_units, units_A: c.units_A, units_B: c.units_B, units_C: c.units_C }));
   }
   return pack;
 }

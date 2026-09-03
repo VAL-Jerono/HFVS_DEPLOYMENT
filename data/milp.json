@@ -14,6 +14,21 @@
   "total_units": 6000,
   "total_cost_ksh": 19750000000
  },
+ "regime_c": {
+  "label": "Capacity-Targeted (Option C)",
+  "total_units": 6000,
+  "total_cost_ksh": 19751924472.0,
+  "counties_uplifted": 24,
+  "uplift_factor": 1.5
+ },
+ "binding_counts_regime_a": {
+  "Capacity": 24,
+  "Budget (revenue)": 0,
+  "National quota": 2,
+  "Unconstrained": 0,
+  "Not activated": 21
+ },
+ "national_delivery_capacity_units": 10763,
  "aspirational": {
   "quota_units": 200000,
   "backlog_units": 15365,

@@ -70,6 +70,32 @@ def rows_by_code(rows, key="county_code"):
 dea_rows = rows_by_code(read_csv(os.path.join(MASTER, "county_dea_efficiency.csv")))
 milp_rows = rows_by_code(read_csv(os.path.join(MASTER, "county_milp_allocation.csv")))
 
+# NEW: pull the refreshed Tier 2/3 results straight from the notebook's
+# deployment export (SBM scores + bootstrap CIs, independently-sourced
+# capacity ceiling, per-county binding-constraint diagnosis, Option C regime).
+DEPLOY_CSV = os.path.join(REPO, "HFVS", "deployment", "county_deployment_summary.csv")
+deploy_by_name = {}
+deploy_meta = {"available": False}
+if os.path.exists(DEPLOY_CSV):
+    deploy_by_name = {r["county_name"]: r for r in read_csv(DEPLOY_CSV)}
+    deploy_meta["available"] = True
+else:
+    print("WARNING: county_deployment_summary.csv not found — "
+          "run the notebook's DEPLOY.1 cell first; serving stale Tier 2/3 fields.")
+
+def dep(name, key, cast=float, nd=None, default=None):
+    r = deploy_by_name.get(name)
+    if r is None or r.get(key) in (None, "", "nan"):
+        return default
+    return rd(r[key], nd) if nd is not None else cast(r[key])
+
+BINDING_ORDER = ["Capacity", "Budget (revenue)", "National quota", "Unconstrained", "Not activated"]
+
+def _mean_of(key):
+    vals = [dep(n, key) for n in COUNTIES_ALPHA]
+    vals = [v for v in vals if v is not None]
+    return sum(vals) / len(vals) if vals else None
+
 hfvs = {}
 for r in read_csv(HFVS_VALIDATION_CSV):
     hfvs[r["county_name"]] = rd(r["measured"])
@@ -100,6 +126,23 @@ for code, name in enumerate(COUNTIES_ALPHA, start=1):
         "pct_top_decile_vulnerable": rd(d["pct_top_decile_vulnerable"], 4),
         "financial_stability_score": rd(d["financial_stability_score"], 4),
         "is_ccr_frontier": float(d["theta_CCR"]) >= 0.999,
+        # ── Refreshed Tier 2/3 fields from the notebook's deployment export ──
+        "rho_sbm_bc": dep(name, "rho_sbm_bc", nd=4),
+        "rho_sbm_ci_low": dep(name, "rho_sbm_ci_low", nd=4),
+        "rho_sbm_ci_high": dep(name, "rho_sbm_ci_high", nd=4),
+        "cap_index": dep(name, "cap_index", nd=4),
+        "capacity_ceiling_units": dep(name, "umax_units", cast=lambda v: int(float(v))),
+        "units_A": dep(name, "units_A", cast=lambda v: int(float(v)), default=0),
+        "binding_A": dep(name, "binding_A", cast=str, default="—"),
+        "units_B": dep(name, "units_B", cast=lambda v: int(float(v)), default=0),
+        "binding_B": dep(name, "binding_B", cast=str, default="—"),
+        "units_C": dep(name, "units_C", cast=lambda v: int(float(v)), default=0),
+        "binding_C": dep(name, "binding_C", cast=str, default="—"),
+        "capacity_uplift_flag": dep(name, "capacity_uplift_flag", cast=lambda v: str(v).strip().lower() == "true", default=False),
+        "policy_quadrant": dep(name, "policy_quadrant", cast=str),
+        "cost_A_ksh": dep(name, "cost_A_ksh", nd=0),
+        "cost_B_ksh": dep(name, "cost_B_ksh", nd=0),
+        "cost_C_ksh": dep(name, "cost_C_ksh", nd=0),
     })
 
 with open(os.path.join(OUT, "county_metrics.json"), "w") as f:
@@ -130,6 +173,10 @@ with open(os.path.join(OUT, "national_summary.json"), "w") as f:
         "dea_mean_theta_ccr": 0.8320,
         "dea_mean_theta_bcc": 0.8844,
         "dea_frontier_counties": 9,
+        # ── SBM (primary efficiency measure, notebook S9.1b/c) ──
+        "sbm_available": deploy_meta["available"],
+        "sbm_mean_rho_bc": rd(_mean_of("rho_sbm_bc"), 4),
+        "sbm_radial_masking_gap": rd((_mean_of("theta_ccr") or 0) - (_mean_of("rho_sbm_bc") or 0), 4),
         "milp_regime_a_counties": 19,
         "milp_regime_b_counties": 47,
         "milp_units_delivery_constrained": 6000,
@@ -175,12 +222,25 @@ with open(os.path.join(OUT, "pillars.json"), "w") as f:
 print("pillars.json")
 
 with open(os.path.join(OUT, "milp.json"), "w") as f:
+    _binding_counts = {b: 0 for b in BINDING_ORDER}
+    for c in counties:
+        b = c.get("binding_A")
+        if b in _binding_counts:
+            _binding_counts[b] += 1
+    _uplifted = sum(1 for c in counties if c.get("capacity_uplift_flag"))
     json.dump({
         "total_budget_ksh": 73200000000,
         "regime_a": {"label": "Capital Concentration", "counties_activated": 19,
                      "total_counties": 47, "total_units": 6000, "total_cost_ksh": 19750000000},
         "regime_b": {"label": "Universal Coverage", "counties_activated": 47,
                      "total_counties": 47, "total_units": 6000, "total_cost_ksh": 19750000000},
+        "regime_c": {"label": "Capacity-Targeted (Option C)",
+                     "total_units": int(sum(c["units_C"] or 0 for c in counties)),
+                     "total_cost_ksh": sum(c["cost_C_ksh"] or 0 for c in counties),
+                     "counties_uplifted": _uplifted,
+                     "uplift_factor": 1.5},
+        "binding_counts_regime_a": _binding_counts,
+        "national_delivery_capacity_units": int(sum(c["capacity_ceiling_units"] or 0 for c in counties)) if deploy_meta["available"] else None,
         "aspirational": {"quota_units": 200000, "backlog_units": 15365,
                          "backlog_cost_ksh": 50580000000, "counties_activated": 47,
                          "fundable": True},

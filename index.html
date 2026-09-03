@@ -44,12 +44,12 @@
     <div class="grid-2">
       <div class="card"><h3>Who is most exposed?</h3>
         <p class="muted">Share of households by vulnerability tier (HFVS).</p>
-        <canvas id="chart-tiers" height="240"></canvas>
+        <div class="chart-box"><canvas id="chart-tiers"></canvas></div>
         <p class="footnote">Nearly half of surveyed households (47.1%) fall in the <b>High</b> or <b>Critical</b> vulnerability tiers. A model that only looks at housing costs would miss most of them.</p>
       </div>
       <div class="card"><h3>Vulnerable population by county</h3>
         <p class="muted">2026 projected population, coloured by county-average vulnerability score.</p>
-        <canvas id="chart-pop-vuln" height="240"></canvas>
+        <div class="chart-box tall"><canvas id="chart-pop-vuln"></canvas></div>
       </div>
     </div>
     <div class="card chat-card">
@@ -67,9 +67,11 @@
           <label for="map-metric">Colour counties by</label>
           <select id="map-metric">
             <option value="hfvs_mean">Vulnerability score (HFVS)</option>
-            <option value="theta_ccr">Delivery efficiency (DEA)</option>
+            <option value="rho_sbm_bc">Delivery efficiency (SBM ρ)</option>
             <option value="unit_cost_ksh">Cost per housing unit</option>
             <option value="milp_units_regime_b">Units allocated (Regime B)</option>
+            <option value="units_C">Units allocated (Regime C — capacity-targeted)</option>
+            <option value="capacity_ceiling_units">Delivery capacity ceiling (units/yr)</option>
             <option value="pct_top_decile_vulnerable">% in most-vulnerable decile</option>
           </select>
         </div>
@@ -90,12 +92,12 @@
     <div class="grid-2">
       <div class="card"><h3>How the model improved step by step</h3>
         <p class="muted">Ability to explain a household's housing-cost burden (share of variation explained).</p>
-        <canvas id="chart-model-chain" height="260"></canvas>
+        <div class="chart-box"><canvas id="chart-model-chain"></canvas></div>
         <p class="footnote">A simple linear model explains only 23% of the variation. The final two-stage AI model explains <b>62%</b> for renters (a +39-point gain) by first predicting <i>whether</i> a household bears a cost burden, then <i>how much</i>.</p>
       </div>
       <div class="card"><h3>What the model looks at</h3>
         <p class="muted">Top drivers of the prediction (SHAP importance).</p>
-        <canvas id="chart-shap" height="260"></canvas>
+        <div class="chart-box tall"><canvas id="chart-shap"></canvas></div>
       </div>
     </div>
     <div class="card chat-card">
@@ -108,7 +110,7 @@
     <div class="card">
       <h3>The five pillars of housing vulnerability</h3>
       <p class="muted">The HFVS is built from five dimensions. Their importance is learned from data, not assumed, and <b>tenure insecurity</b> (not being secure in your home) matters more than anything else.</p>
-      <canvas id="chart-pillars" height="260"></canvas>
+      <div class="chart-box"><canvas id="chart-pillars"></canvas></div>
       <p class="footnote">Maximum overlap between pillars is 0.47; they measure genuinely different things. Scoring with equal weights instead of learned weights still ranks 84% of households the same way (Spearman 0.84), so the result is robust.</p>
     </div>
     <div class="grid-2">
@@ -116,7 +118,7 @@
         <ul class="plain-list" id="pillar-plain"></ul>
       </div>
       <div class="card"><h3>County-average vulnerability (top 12)</h3>
-        <canvas id="chart-pillar-county" height="300"></canvas>
+        <div class="chart-box tall"><canvas id="chart-pillar-county"></canvas></div>
       </div>
     </div>
     <div class="card chat-card">
@@ -129,23 +131,35 @@
   <section class="panel" id="panel-budget">
     <div class="hero hero-alt">
       <span class="hero-kicker">The optimisation result</span>
-      <h2>Spreading the budget across all 47 counties costs <strong>nothing extra</strong></h2>
-      <p>Focusing money in 19 counties (Regime A) or covering every county (Regime B) costs the same ≈ KSh 19.75B for 6,000 units,
-      only 27% of one year's levy. Equity is effectively <strong>free</strong>; the real constraint is how fast Kenya can build.</p>
+      <h2>The bottleneck is <strong>county delivery capacity</strong>, not levy revenue</h2>
+      <p>The 6,000-unit delivery-constrained programme costs ≈ KSh 19.75B — just 27% of one year's levy — under every regime.
+      But the binding-constraint diagnosis shows <strong id="binding-headline">most funded counties</strong> are stopped by their own
+      delivery ceilings (permits, completions, financing), not by money. That's why the recommended policy is
+      <strong>Option C</strong>: capacity-building where capacity binds, cash where it doesn't.</p>
     </div>
     <div class="stat-grid" id="budget-stats"></div>
     <div class="grid-2">
       <div class="card"><h3>Two ways to spend the same money</h3>
-        <canvas id="chart-regimes" height="240"></canvas>
-        <p class="footnote">Regime A concentrates units in 19 counties; Regime B serves all 47. Same 6,000 units, same cost.</p>
+        <div class="chart-box"><canvas id="chart-regimes"></canvas></div>
+        <p class="footnote">Regime A concentrates units; Regime B serves all 47. Same 6,000 units, same cost — the real rationing happens at county capacity.</p>
+      </div>
+      <div class="card"><h3>Which constraint binds? (Regime A)</h3>
+        <p class="muted">Per-county diagnosis: is each county stopped by its own delivery capacity, the national quota, or the budget?</p>
+        <div class="chart-box"><canvas id="chart-binding"></canvas></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><h3>What the diagnosis means</h3>
+        <ul class="plain-list" id="binding-plain"></ul>
+        <p class="footnote">Capacity ceilings are built from county permits issued, permit approval rates, completions records, units under construction and financier-financed units — an independent supply-side measure, not the demand backlog and not the DEA score.</p>
       </div>
       <div class="card"><h3>The aspirational scenario</h3>
-        <canvas id="chart-aspirational" height="240"></canvas>
+        <div class="chart-box"><canvas id="chart-aspirational"></canvas></div>
         <p class="footnote">At the official 200,000-unit target, the full 15,365-unit backlog (KSh 50.58B) is affordable within the KSh 73.2B levy, but only 1,795 units were completed in FY2024/25.</p>
       </div>
     </div>
     <div class="card">
-      <h3>Where the money goes (Regime B, top 15)</h3>
+      <h3>Where the money goes (Regime A, top 15)</h3>
       <div class="table-wrap"><table id="budget-table" class="data-table"></table></div>
     </div>
     <div class="card chat-card">

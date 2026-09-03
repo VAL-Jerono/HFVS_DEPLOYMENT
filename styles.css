@@ -77,3 +77,17 @@ select { font: inherit; font-size: 13.5px; padding: 8px 12px; border-radius: 9px
 .pill { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 700; }
 .pill.frontier { background: #e2f4ea; color: #1d7a4d; }
 .pill.inner { background: #fdeeee; color: #b23a36; }
+/* binding-constraint pills (Regime A diagnosis) */
+.pill.b-cap { background: #fdeeee; color: #b23a36; }
+.pill.b-rev { background: #e3eef5; color: #0b4f6c; }
+.pill.b-quota { background: #fbf1dd; color: #9a6b12; }
+.pill.b-good { background: #e2f4ea; color: #1d7a4d; }
+.pill.b-off { background: #eef0f3; color: #6b7280; }
+
+/* Fixed-height chart containers: every Chart.js canvas lives inside a
+   .chart-box and renders with maintainAspectRatio:false, so charts fill a
+   predictable, frame-friendly height instead of ballooning to card width. */
+.chart-box { position: relative; height: 270px; width: 100%; }
+.chart-box.tall { height: 380px; }
+@media (max-width: 860px) { .chart-box { height: 240px; } .chart-box.tall { height: 340px; } }
+.chart-box canvas { width: 100% !important; height: 100% !important; }

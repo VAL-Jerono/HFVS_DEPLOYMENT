@@ -61,7 +61,7 @@ function renderOverview() {
   new Chart($("#chart-tiers"), {
     type: "doughnut",
     data: { labels: Object.keys(tiers), datasets: [{ data: Object.values(tiers), backgroundColor: Object.keys(tiers).map(t => TIER_COLORS[t]), borderWidth: 2, borderColor: "#fff" }] },
-    options: { cutout: "58%", plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${fmt(c.parsed, 0)} households (${pct(c.parsed / n.households_surveyed * 100)})` } } } },
+    options: { cutout: "58%", maintainAspectRatio: false, plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${fmt(c.parsed, 0)} households (${pct(c.parsed / n.households_surveyed * 100)})` } } } },
   });
 
   const cs = [...state.counties].filter(c => c.hfvs_mean != null).sort((a, b) => b.hfvs_mean - a.hfvs_mean);
@@ -91,6 +91,7 @@ function renderModel() {
     type: "bar",
     data: { labels: chain.map(m => m.stage.replace(/^S[\d.]+\s*/, "")), datasets: [{ data: chain.map(m => m.r2), backgroundColor: chain.map(m => m.r2 === Math.max(...chain.map(x => x.r2)) ? "#2e9e6b" : "#7fb3c8"), borderRadius: 6 }] },
     options: {
+      maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${pct(c.parsed.y * 100)} of variation explained` } } },
       scales: { y: { max: 0.7, ticks: { callback: v => pct(v * 100, 0) } }, x: { ticks: { font: { size: 10 }, maxRotation: 35, minRotation: 20 } } },
     },
@@ -100,7 +101,7 @@ function renderModel() {
   new Chart($("#chart-shap"), {
     type: "bar",
     data: { labels: sh.map(f => f.label), datasets: [{ data: sh.map(f => f.mean_abs_shap), backgroundColor: "#0b4f6c", borderRadius: 5 }] },
-    options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: "Importance (mean |SHAP|)" } } } },
+    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: "Importance (mean |SHAP|)" } } } },
   });
 }
 
@@ -120,6 +121,7 @@ function renderDrivers() {
     type: "bar",
     data: { labels: p.map(x => x.name), datasets: [{ data: p.map(x => x.beta_weight), backgroundColor: PILLAR_COLORS, borderRadius: 6 }] },
     options: {
+      maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` Weight: ${pct(c.parsed.y * 100)} of the score` } } },
       scales: { y: { ticks: { callback: v => pct(v * 100, 0) }, max: 0.4 } },
     },
@@ -139,6 +141,7 @@ function renderDrivers() {
       ],
     },
     options: {
+      maintainAspectRatio: false,
       plugins: { legend: { position: "bottom" } },
       scales: { x: { ticks: { font: { size: 10 }, maxRotation: 40, minRotation: 30 } }, y: { beginAtZero: true } },
     },
@@ -146,26 +149,56 @@ function renderDrivers() {
 }
 
 // ---------- budget ----------
+const BINDING_COLORS = { "Capacity": "#d64541", "Budget (revenue)": "#0b4f6c", "National quota": "#e8a13a", "Unconstrained": "#2e9e6b", "Not activated": "#b9c1cc" };
+const BINDING_PILL = { "Capacity": "cap", "Budget (revenue)": "rev", "National quota": "quota", "Unconstrained": "good", "Not activated": "off" };
+const BINDING_PLAIN = {
+  "Capacity": "County cannot absorb more units — its delivery ceiling (permits, completions, financing) binds",
+  "Budget (revenue)": "National budget exhausted at the margin — more money would buy more units here",
+  "National quota": "National unit quota exhausted — the programme cap, not this county, is the limit",
+  "Unconstrained": "Interior optimum — no constraint stops this county from receiving more units",
+  "Not activated": "County not activated under this regime",
+};
+
 function renderBudget() {
   const m = state.milp;
+  const c = m.regime_c || null;
+  const bc = m.binding_counts_regime_a || {};
+  const capCount = bc["Capacity"] || 0;
   statGrid($("#budget-stats"), [
-    { value: fmtB(m.regime_a.total_cost_ksh), label: "cost of the 6,000-unit programme (identical under both regimes)", tone: "good" },
+    { value: fmtB(m.regime_a.total_cost_ksh), label: "cost of the 6,000-unit programme (identical under regimes A and B)", tone: "good" },
     { value: `${m.regime_a.counties_activated}/47`, label: "counties funded under Capital Concentration (Regime A)" },
-    { value: `${m.regime_b.counties_activated}/47`, label: "counties funded under Universal Coverage (Regime B)" },
-    { value: fmtB(m.total_budget_ksh), label: "total FY2024/25 levy (the programme uses just 27%)" },
-    { value: fmt(m.aspirational.backlog_units, 0), label: "unit backlog (fully fundable at the official 200,000-unit target)", tone: "good" },
+    { value: `${capCount}/47`, label: "counties where DELIVERY CAPACITY — not money — binds (Regime A)", tone: capCount > 0 ? "alert" : "" },
+    { value: c ? `+${fmt((c.total_units || 0) - m.regime_a.total_units, 0)}` : "—",
+      label: c ? `extra units unlocked by Option C capacity uplift (+50% ceilings in ${c.counties_uplifted} counties, zero extra levy)` : "", tone: "good" },
+    { value: fmtB(m.total_budget_ksh), label: "total FY2024/25 levy (the programme uses just 27%)", tone: "good" },
   ]);
+  const _bh = $("#binding-headline");
+  if (_bh) _bh.textContent = capCount > 0 ? `${capCount} of 19 funded counties` : "most funded counties";
 
   new Chart($("#chart-regimes"), {
     type: "bar",
     data: {
-      labels: ["Capital Concentration (A)", "Universal Coverage (B)"],
+      labels: ["Concentration (A)", "Universal (B)"],
       datasets: [
         { label: "Counties activated", data: [m.regime_a.counties_activated, m.regime_b.counties_activated], backgroundColor: "#e8873a", borderRadius: 6 },
         { label: "Cost (KSh B)", data: [m.regime_a.total_cost_ksh / 1e9, m.regime_b.total_cost_ksh / 1e9], backgroundColor: "#0b4f6c", borderRadius: 6 },
       ],
     },
-    options: { plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } },
+    options: { maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } },
+  });
+
+  // NEW: binding-constraint doughnut (Regime A) — the thesis's headline output
+  const bLabels = Object.keys(bc).filter(k => bc[k] > 0);
+  new Chart($("#chart-binding"), {
+    type: "doughnut",
+    data: {
+      labels: bLabels,
+      datasets: [{ data: bLabels.map(k => bc[k]), backgroundColor: bLabels.map(k => BINDING_COLORS[k] || "#999"), borderWidth: 2, borderColor: "#fff" }],
+    },
+    options: {
+      cutout: "55%", maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed} counties` } } },
+    },
   });
 
   new Chart($("#chart-aspirational"), {
@@ -178,30 +211,38 @@ function renderBudget() {
       }],
     },
     options: {
-      indexAxis: "y", plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` KSh ${c.parsed.x.toFixed(2)}B` } } },
+      indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` KSh ${c.parsed.x.toFixed(2)}B` } } },
       scales: { x: { title: { display: true, text: "KSh Billion" } } },
     },
   });
 
-  const rows = [...state.counties].sort((a, b) => (b.milp_units_regime_b || 0) - (a.milp_units_regime_b || 0)).slice(0, 15);
+  const rows = [...state.counties].sort((a, b) => (b.units_A || b.milp_units_regime_b || 0) - (a.units_A || a.milp_units_regime_b || 0)).slice(0, 15);
+  $("#binding-plain").innerHTML = Object.keys(BINDING_PLAIN)
+    .filter(k => (bc[k] || 0) > 0)
+    .map(k => `<li><span class="dot" style="background:${BINDING_COLORS[k]}">${bc[k]}</span><b>${k}:</b> ${BINDING_PLAIN[k]}.</li>`)
+    .join("");
   $("#budget-table").innerHTML = `
-    <thead><tr><th>County</th><th class="num">Units (Regime B)</th><th class="num">Spend</th><th class="num">Cost / unit</th><th class="num">Vulnerability</th><th>Efficiency</th></tr></thead>
-    <tbody>${rows.map(c => `<tr>
-      <td>${c.county}</td>
-      <td class="num">${fmt(c.milp_units_regime_b, 0)}</td>
-      <td class="num">${fmtB(c.milp_cost_regime_b_ksh)}</td>
-      <td class="num">${fmtM(c.unit_cost_ksh)}</td>
-      <td class="num">${c.hfvs_mean == null ? "—" : c.hfvs_mean.toFixed(3)}</td>
-      <td><span class="pill ${c.is_ccr_frontier ? "frontier" : "inner"}">${c.theta_ccr.toFixed(2)}</span></td>
+    <thead><tr><th>County</th><th class="num">Capacity ceiling</th><th class="num">Units (A)</th><th>Binding constraint (A)</th><th class="num">Units (C)</th><th class="num">SBM ρ</th><th class="num">Spend (A)</th></tr></thead>
+    <tbody>${rows.map(c2 => `<tr>
+      <td>${c2.county}</td>
+      <td class="num">${c2.capacity_ceiling_units == null ? "—" : fmt(c2.capacity_ceiling_units, 0)}</td>
+      <td class="num">${fmt(c2.units_A ?? c2.milp_units_regime_b ?? 0, 0)}</td>
+      <td>${c2.binding_A && c2.binding_A !== "—" ? `<span class="pill b-${BINDING_PILL[c2.binding_A] || "off"}">${c2.binding_A}</span>` : "—"}</td>
+      <td class="num">${c2.units_C == null ? "—" : fmt(c2.units_C, 0)}</td>
+      <td class="num">${c2.rho_sbm_bc == null ? "—" : c2.rho_sbm_bc.toFixed(3)}</td>
+      <td class="num">${fmtB(c2.cost_A_ksh ?? c2.milp_cost_regime_b_ksh)}</td>
     </tr>`).join("")}</tbody>`;
 }
 
 // ---------- real Leaflet choropleth ----------
 const METRICS = {
   hfvs_mean: { label: "Vulnerability score (HFVS)", higherIsWorse: true, fmt: v => v.toFixed(3) },
-  theta_ccr: { label: "Delivery efficiency (DEA θ)", higherIsWorse: false, fmt: v => v.toFixed(3) },
+  rho_sbm_bc: { label: "Delivery efficiency (SBM ρ, bias-corrected)", higherIsWorse: false, fmt: v => v.toFixed(3) },
+  theta_ccr: { label: "Delivery efficiency (radial θ, comparator)", higherIsWorse: false, fmt: v => v.toFixed(3) },
   unit_cost_ksh: { label: "Cost per housing unit", higherIsWorse: true, fmt: v => fmtM(v) },
   milp_units_regime_b: { label: "Units allocated (Regime B)", higherIsWorse: false, fmt: v => fmt(v, 0) },
+  units_C: { label: "Units allocated (Regime C — capacity-targeted)", higherIsWorse: false, fmt: v => fmt(v, 0) },
+  capacity_ceiling_units: { label: "Delivery capacity ceiling (units/yr)", higherIsWorse: false, fmt: v => fmt(v, 0) },
   pct_top_decile_vulnerable: { label: "% in most-vulnerable decile", higherIsWorse: true, fmt: v => pct(v * 100) },
 };
 const RAMP = ["#2e9e6b", "#8cc63f", "#f5e34f", "#f59a3c", "#d64541"]; // good -> bad
@@ -259,14 +300,20 @@ function countyByFeature(f) {
 }
 
 function countyPopup(c, metricKey) {
+  const bind = c.binding_A && c.binding_A !== "—"
+    ? `<span class="pill b-${BINDING_PILL[c.binding_A] || "off"}">${c.binding_A}</span>` : "—";
+  const sbm = c.rho_sbm_bc == null ? "" :
+    `Efficiency (SBM ρ): <b>${c.rho_sbm_bc.toFixed(3)}</b>` +
+    (c.rho_sbm_ci_low != null ? ` <span style="opacity:.75">[95% CI ${c.rho_sbm_ci_low.toFixed(2)}–${c.rho_sbm_ci_high.toFixed(2)}]</span>` : "") +
+    ` <span style="opacity:.75">(radial θ ${c.theta_ccr.toFixed(3)})</span><br>`;
   return `<div class="county-tip">
-    <b>${c.county}</b><br>
+    <b>${c.county}</b>${c.policy_quadrant ? ` · <span style="opacity:.75">${c.policy_quadrant}</span>` : ""}<br>
     Vulnerability score: <b>${c.hfvs_mean == null ? "—" : c.hfvs_mean.toFixed(3)}</b><br>
-    Delivery efficiency (θ): ${c.theta_ccr.toFixed(3)} ${c.is_ccr_frontier ? "★ on efficient frontier" : ""}<br>
+    ${sbm}Delivery capacity ceiling: <b>${c.capacity_ceiling_units == null ? "—" : fmt(c.capacity_ceiling_units, 0)} units/yr</b><br>
+    Binding constraint (Regime A): ${bind}<br>
+    Units: A ${fmt(c.units_A ?? 0, 0)} · B ${fmt(c.units_B ?? c.milp_units_regime_b ?? 0, 0)} · C ${fmt(c.units_C ?? 0, 0)}<br>
     Households surveyed: ${fmt(c.households_surveyed, 0)}<br>
     2026 projected population: ${fmt(c.population_2026_est, 0)}<br>
-    Units allocated (Regime B): ${fmt(c.milp_units_regime_b, 0)}<br>
-    Cost per unit: ${fmtM(c.unit_cost_ksh)}<br>
     Water travel: ${c.avg_water_travel_mins ?? "—"} min · Overcrowding: ${c.avg_overcrowding ?? "—"} persons/room
   </div>`;
 }
