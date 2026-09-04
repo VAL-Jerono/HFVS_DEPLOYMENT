@@ -221,9 +221,10 @@
       </div>
     </div>
     <div class="card">
-      <h3>Cross-tier consistency: Need vs efficiency vs allocation</h3>
-      <p class="muted">Consistency validation checking alignment between household vulnerability, county DEA efficiency, and MILP unit allocation.</p>
-      <div class="chart-box"><canvas id="chart-consistency"></canvas></div>
+      <h3>Cross-Tier Policy Quadrant Allocation & Capacity Diagnosis</h3>
+      <p class="muted">Categorizing 47 counties into 4 policy quadrants based on Household Need (HFVS) and County Delivery Efficiency (SBM ρ) to validate resource allocation.</p>
+      <div class="chart-box tall"><canvas id="chart-quadrants"></canvas></div>
+      <p class="footnote">High Need & Low Efficiency hubs (e.g. Mandera, West Pokot) suffer from delivery capacity ceilings under Regime A. Option C uplifts their capacity by +50% to ensure spatial equity without sacrificing execution efficiency.</p>
     </div>
     <div class="card">
       <div class="table-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
@@ -236,8 +237,8 @@
       <div class="pagination-row" style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; font-size:13px; color:var(--muted);">
         <span id="pagination-info">Showing rows 1-5 of 47</span>
         <div class="pagination-controls" style="display:flex; gap:8px;">
-          <button id="btn-prev-page" class="sugg" style="padding:4px 12px; border-radius:6px;">← Previous</button>
-          <button id="btn-next-page" class="sugg" style="padding:4px 12px; border-radius:6px;">Next →</button>
+          <button id="btn-prev-page" class="btn-page" style="appearance:none; border:1px solid rgba(99,102,241,0.3); background:rgba(99,102,241,0.1); color:#a5b4fc; font:inherit; font-size:13px; font-weight:600; padding:6px 14px; border-radius:6px; cursor:pointer;">← Previous</button>
+          <button id="btn-next-page" class="btn-page" style="appearance:none; border:1px solid rgba(99,102,241,0.3); background:rgba(99,102,241,0.1); color:#a5b4fc; font:inherit; font-size:13px; font-weight:600; padding:6px 14px; border-radius:6px; cursor:pointer;">Next →</button>
         </div>
       </div>
     </div>
@@ -253,10 +254,10 @@
       <h3>Ask the Analyst</h3>
       <p class="muted">An AI-powered decision support assistant grounded exclusively in pre-computed research findings across all three modeling tiers:</p>
       <div class="suggestions">
-        <button class="sugg">Which 5 counties should receive AHP housing investments first, and why?</button>
-        <button class="sugg">Why does the ML model outperform simple cost-only screening rules?</button>
-        <button class="sugg">Is the statutory Housing Levy revenue sufficient to clear the vulnerability backlog?</button>
-        <button class="sugg">Compare Nairobi and West Pokot across vulnerability, efficiency, and budget allocation.</button>
+        <button class="sugg-chip">Which 5 counties should receive AHP housing investments first, and why?</button>
+        <button class="sugg-chip">Why does the ML model outperform simple cost-only screening rules?</button>
+        <button class="sugg-chip">Is the statutory Housing Levy revenue sufficient to clear the vulnerability backlog?</button>
+        <button class="sugg-chip">Compare Nairobi and West Pokot across vulnerability, efficiency, and budget allocation.</button>
       </div>
       <div class="chat" data-chat-tab="analyst"></div>
     </div>

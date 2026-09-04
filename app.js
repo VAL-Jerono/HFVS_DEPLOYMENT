@@ -481,40 +481,79 @@ function renderBudget() {
     },
   });
 
-  const cc = state.counties.filter(c2 => c2.hfvs_mean != null && c2.rho_sbm_bc != null);
-  new Chart($("#chart-consistency"), {
-    type: "scatter",
+  // Cross-Tier Policy Quadrant Allocation & Capacity Diagnosis Chart (#chart-quadrants)
+  const quads = {
+    "Priority (High Vuln, Low Eff)": { count: 0, units_A: 0, units_C: 0, cap: 0, hfvs: [], sbm: [], name: "Priority Hubs (High Need, Low Cap)" },
+    "Expand (High Vuln, High Eff)": { count: 0, units_A: 0, units_C: 0, cap: 0, hfvs: [], sbm: [], name: "Expand Hubs (High Need, High Cap)" },
+    "Maintain (Low Vuln, High Eff)": { count: 0, units_A: 0, units_C: 0, cap: 0, hfvs: [], sbm: [], name: "Maintain Hubs (Mod Need, High Cap)" },
+    "Improve (Low Vuln, Low Eff)": { count: 0, units_A: 0, units_C: 0, cap: 0, hfvs: [], sbm: [], name: "Improve Hubs (Mod Need, Low Cap)" }
+  };
+
+  state.counties.forEach(c2 => {
+    const qKey = c2.policy_quadrant || "Improve (Low Vuln, Low Eff)";
+    if (quads[qKey]) {
+      quads[qKey].count++;
+      quads[qKey].units_A += c2.units_A || c2.milp_units_regime_b || 0;
+      quads[qKey].units_C += c2.units_C || 0;
+      quads[qKey].cap += c2.capacity_ceiling_units || 0;
+      if (c2.hfvs_mean != null) quads[qKey].hfvs.push(c2.hfvs_mean);
+      if (c2.rho_sbm_bc != null) quads[qKey].sbm.push(c2.rho_sbm_bc);
+    }
+  });
+
+  const qKeys = Object.keys(quads);
+  const qLabels = qKeys.map(k => quads[k].name);
+  const qUnitsA = qKeys.map(k => quads[k].units_A);
+  const qUnitsC = qKeys.map(k => quads[k].units_C);
+  const qCaps = qKeys.map(k => quads[k].cap);
+
+  new Chart($("#chart-quadrants"), {
+    type: "bar",
     data: {
-      datasets: [{
-        data: cc.map(c2 => ({ x: c2.hfvs_mean, y: c2.rho_sbm_bc, c: c2 })),
-        backgroundColor: cc.map(c2 => BINDING_COLORS[c2.binding_A] || "#64748b"),
-        pointRadius: cc.map(c2 => c2.units_A ? 5 + Math.min(8, 8 * Math.sqrt(c2.units_A / 500)) : 4),
-        pointHoverRadius: 8
-      }]
+      labels: qLabels,
+      datasets: [
+        {
+          label: "Regime A Units (Concentration)",
+          data: qUnitsA,
+          backgroundColor: "#f43f5e",
+          borderRadius: 6
+        },
+        {
+          label: "Option C Units (+50% Capacity Uplift)",
+          data: qUnitsC,
+          backgroundColor: "#06b6d4",
+          borderRadius: 6
+        },
+        {
+          label: "Municipal Delivery Capacity Ceiling",
+          data: qCaps,
+          backgroundColor: "#f59e0b",
+          borderRadius: 6
+        }
+      ]
     },
     options: {
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: { position: "bottom" },
         tooltip: {
           callbacks: {
-            label: (t) => {
-              const item = t.raw.c;
-              return [
-                `${item.county}`,
-                `Vulnerability (HFVS): ${item.hfvs_mean.toFixed(3)}`,
-                `Efficiency (SBM ρ): ${item.rho_sbm_bc.toFixed(3)}`,
-                `Allocated Units (A): ${fmt(item.units_A ?? 0, 0)} | Constraint: ${item.binding_A ?? "N/A"}`
-              ];
-            }
+            title: (items) => {
+              const k = qKeys[items[0].dataIndex];
+              const q = quads[k];
+              const avgH = q.hfvs.length ? (q.hfvs.reduce((a, b) => a + b, 0) / q.hfvs.length).toFixed(3) : "N/A";
+              const avgS = q.sbm.length ? (q.sbm.reduce((a, b) => a + b, 0) / q.sbm.length).toFixed(3) : "N/A";
+              return `${q.name} (${q.count} counties) | Avg Need: ${avgH} | Avg Efficiency: ${avgS}`;
+            },
+            label: (c) => ` ${c.dataset.label}: ${fmt(c.parsed.y, 0)} units`
           }
-        },
+        }
       },
       scales: {
-        x: { title: { display: true, text: "Household Need (HFVS Vulnerability Score →)" } },
-        y: { title: { display: true, text: "County Efficiency (SBM ρ Score →)" }, min: 0, max: 1 },
-      },
-    },
+        y: { beginAtZero: true, title: { display: true, text: "Allocated Housing Units" } },
+        x: { ticks: { font: { size: 11 } } }
+      }
+    }
   });
 
   new Chart($("#chart-aspirational"), {
