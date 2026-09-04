@@ -34,18 +34,20 @@
   <!-- ============ OVERVIEW ============ -->
   <section class="panel active" id="panel-overview">
     <div class="hero">
-      <span class="hero-kicker">The headline finding</span>
-      <h2>The Levy can fund <strong>every county</strong> — the bottleneck is delivery capacity, not money</h2>
-      <p>Backlog of vulnerable households: <strong>15,365 units (≈ KSh 50.6B)</strong> — one year's levy is ≈ KSh 73.2B. Completed in FY2024/25: <strong>1,795 units</strong>.</p>
+      <span class="hero-kicker">Executive Summary</span>
+      <h2>The Levy can fund <strong>every county</strong>: the bottleneck is delivery capacity, not money</h2>
+      <p>Backlog of vulnerable households: <strong>15,365 units (≈ KSh 50.6B)</strong> | One year's levy collection: ≈ KSh 73.2B | FY2024/25 completions: <strong>1,795 units</strong>.</p>
     </div>
     <div class="stat-grid" id="overview-stats"></div>
     <div class="grid-2">
-      <div class="card"><h3>Who is most exposed?</h3>
-        <p class="muted">Households by vulnerability tier.</p>
+      <div class="card">
+        <h3>Who is most exposed?</h3>
+        <p class="muted">Household distribution across the four HFVS vulnerability tiers.</p>
         <div class="chart-box"><canvas id="chart-tiers"></canvas></div>
       </div>
-      <div class="card"><h3>Vulnerability score by county</h3>
-        <p class="muted">County-average HFVS, all 47 counties.</p>
+      <div class="card">
+        <h3>Vulnerability score by county</h3>
+        <p class="muted">Mean Housing Financial Vulnerability Score (HFVS) across all 47 counties.</p>
         <div class="chart-box xtall"><canvas id="chart-pop-vuln"></canvas></div>
       </div>
     </div>
@@ -67,7 +69,7 @@
             <option value="rho_sbm_bc">Delivery efficiency (SBM ρ)</option>
             <option value="unit_cost_ksh">Cost per housing unit</option>
             <option value="milp_units_regime_b">Units allocated (Regime B)</option>
-            <option value="units_C">Units allocated (Regime C — capacity-targeted)</option>
+            <option value="units_C">Units allocated (Regime C: capacity-targeted)</option>
             <option value="capacity_ceiling_units">Delivery capacity ceiling (units/yr)</option>
             <option value="pct_top_decile_vulnerable">% in most-vulnerable decile</option>
           </select>
@@ -75,7 +77,7 @@
       </div>
       <div id="map"></div>
       <div class="map-legend-wrap"><div id="map-legend" class="map-legend"></div></div>
-      <p class="footnote">Hover a county for a quick read; click to select and see household microdata below.</p>
+      <p class="footnote">Hover over a county for quick metrics; click to select and inspect household microdata below.</p>
     </div>
 
     <!-- ── County household drill-down panel (DuckDB-WASM, client-side) ── -->
@@ -86,11 +88,11 @@
         <button id="drilldown-close" aria-label="Close drill-down" title="Close">✕</button>
       </div>
       <p class="drilldown-notice">
-        Aggregated view only — no individual rows are ever shown.
-        Slices with fewer than 10 households are suppressed at the query layer.
+        Aggregated view only: individual microdata rows are never exposed.
+        Slices with fewer than 10 households are suppressed automatically at the query layer.
       </p>
       <div id="drilldown-loading" class="drilldown-loading" style="display:none">
-        <span class="spinner"></span> Loading household data…
+        <span class="spinner"></span> Loading household microdata...
       </div>
       <div id="drilldown-content" style="display:none">
         <div class="drilldown-stats" id="drilldown-stats"></div>
@@ -102,12 +104,12 @@
           </div>
           <div class="card drilldown-subchart">
             <h4>Urban vs rural split</h4>
-            <p class="muted">Households by settlement type.</p>
+            <p class="muted">Households by settlement environment.</p>
             <div class="chart-box"><canvas id="chart-drill-urban"></canvas></div>
           </div>
           <div class="card drilldown-subchart">
             <h4>Vulnerability pillar profile</h4>
-            <p class="muted">Mean pillar score vs national average (higher = more stressed).</p>
+            <p class="muted">Mean pillar score vs national average (higher = more vulnerable).</p>
             <div class="chart-box"><canvas id="chart-drill-pillars"></canvas></div>
           </div>
           <div class="card drilldown-subchart">
@@ -128,18 +130,21 @@
   <section class="panel" id="panel-model">
     <div class="stat-grid" id="model-stats"></div>
     <div class="grid-2">
-      <div class="card"><h3>How the model improved step by step</h3>
-        <p class="muted">Share of housing-cost-burden variation explained.</p>
+      <div class="card">
+        <h3>Model progression across architectures</h3>
+        <p class="muted">Predictive accuracy ($R^2$) across baseline, ensemble, and hurdle models.</p>
         <div class="chart-box"><canvas id="chart-model-chain"></canvas></div>
-        <p class="footnote">Two-stage hurdle model: first <i>whether</i> a household bears a cost burden (ROC-AUC <b id="auc-inline">—</b>), then <i>how much</i>.</p>
+        <p class="footnote">Two-stage hurdle architecture: Stage 1 predicts default risk onset (ROC-AUC <b id="auc-inline">0.887</b>), Stage 2 predicts cost burden intensity ($R^2 = 0.617$).</p>
       </div>
-      <div class="card"><h3>What the model looks at</h3>
-        <p class="muted">Top drivers (SHAP importance).</p>
+      <div class="card">
+        <h3>Primary SHAP feature attributions</h3>
+        <p class="muted">Top structural and financial risk drivers sorted by mean absolute SHAP value.</p>
         <div class="chart-box tall"><canvas id="chart-shap"></canvas></div>
       </div>
     </div>
-    <div class="card"><h3>Efficiency validation — SBM vs radial DEA</h3>
-      <p class="muted">Non-radial SBM exposes slacks the radial score masks.</p>
+    <div class="card">
+      <h3>Efficiency validation: Non-radial SBM vs radial DEA</h3>
+      <p class="muted">Slack-Based Measure (SBM) exposes hidden operational slacks in water travel time and overcrowding that radial CCR/BCC models mask.</p>
       <div class="stat-grid" id="dea-stats"></div>
       <div class="chart-box" style="margin-top:16px;"><canvas id="chart-dea-gap"></canvas></div>
     </div>
@@ -148,18 +153,21 @@
       <div class="chat" data-chat-tab="model"></div>
     </div>
   </section>
+
   <!-- ============ DRIVERS ============ -->
   <section class="panel" id="panel-drivers">
     <div class="card">
       <h3>The five pillars of housing vulnerability</h3>
-      <p class="muted">Learned from data, not assumed — tenure insecurity matters most.</p>
+      <p class="muted">Weights derived empirically via SHAP attribution: tenure insecurity dominates financial burden.</p>
       <div class="chart-box"><canvas id="chart-pillars"></canvas></div>
     </div>
     <div class="grid-2">
-      <div class="card"><h3>In plain terms</h3>
+      <div class="card">
+        <h3>Pillar definitions and policy takeaways</h3>
         <ul class="plain-list" id="pillar-plain"></ul>
       </div>
-      <div class="card"><h3>Most vulnerable counties (top 12)</h3>
+      <div class="card">
+        <h3>Top 12 most vulnerable counties</h3>
         <div class="chart-box tall"><canvas id="chart-pillar-county"></canvas></div>
       </div>
     </div>
@@ -172,37 +180,42 @@
   <!-- ============ BUDGET ============ -->
   <section class="panel" id="panel-budget">
     <div class="hero hero-alt">
-      <span class="hero-kicker">The optimisation result</span>
+      <span class="hero-kicker">Resource Allocation Optimisation</span>
       <h2>What binds: <strong>county delivery capacity</strong>, not levy revenue</h2>
-      <p>The 6,000-unit programme costs ≈ KSh 19.75B — just 27% of one year's levy. Most funded counties are stopped by their own delivery ceilings, not money. Recommended: <strong>Option C</strong> — capacity-building where capacity binds, cash where it doesn't.</p>
+      <p>The 6,000-unit programme requires KSh 19.75B (27% of annual levy revenue). Most funded counties are constrained by municipal delivery ceilings rather than financial capital. Recommended: <strong>Option C (Capacity-Targeted)</strong> to expand local delivery capacity while maintaining equity.</p>
     </div>
     <div class="stat-grid" id="budget-stats"></div>
     <div class="grid-2">
-      <div class="card"><h3>Two ways to spend the same money</h3>
+      <div class="card">
+        <h3>Regime A vs Regime B allocation comparison</h3>
         <div class="chart-box"><canvas id="chart-regimes"></canvas></div>
-        <p class="footnote">Regime A concentrates units; Regime B serves all 47. Same 6,000 units, same cost — the real rationing happens at county capacity.</p>
+        <p class="footnote">Regime A concentrates units in top-capacity hubs (26 counties activated); Regime B mandates universal coverage across all 47 counties.</p>
       </div>
-      <div class="card"><h3>Which constraint binds? (Regime A)</h3>
-        <p class="muted">Per-county diagnosis: is each county stopped by its own delivery capacity, the national quota, or the budget?</p>
+      <div class="card">
+        <h3>Binding constraint breakdown (Regime A)</h3>
+        <p class="muted">Diagnosis of active constraints preventing further unit expansion across counties.</p>
         <div class="chart-box"><canvas id="chart-binding"></canvas></div>
       </div>
     </div>
     <div class="grid-2">
-      <div class="card"><h3>What the diagnosis means</h3>
+      <div class="card">
+        <h3>Diagnostic categories explained</h3>
         <ul class="plain-list" id="binding-plain"></ul>
-        <p class="footnote">Capacity ceilings are built from county permits issued, permit approval rates, completions records, units under construction and financier-financed units — an independent supply-side measure, not the demand backlog and not the DEA score.</p>
+        <p class="footnote">Capacity ceilings are estimated independently from municipal building permits, completion velocity, active construction sites, and financial non-performing loan ratios.</p>
       </div>
-      <div class="card"><h3>The aspirational scenario</h3>
+      <div class="card">
+        <h3>Aspirational scenario (200,000 units target)</h3>
         <div class="chart-box"><canvas id="chart-aspirational"></canvas></div>
-        <p class="footnote">At the official 200,000-unit target, the full 15,365-unit backlog (KSh 50.58B) is affordable within the KSh 73.2B levy, but only 1,795 units were completed in FY2024/25.</p>
+        <p class="footnote">At the official 200,000-unit target, the entire 15,365-unit high-vulnerability backlog (KSh 50.58B) is fully fundable within the KSh 73.2B annual levy collection.</p>
       </div>
     </div>
-    <div class="card"><h3>Need vs efficiency vs allocation (cross-tier check)</h3>
-      <p class="muted">High-need, low-efficiency counties should shift between regimes — the proposal's consistency test.</p>
+    <div class="card">
+      <h3>Cross-tier consistency: Need vs efficiency vs allocation</h3>
+      <p class="muted">Consistency validation checking alignment between household vulnerability, county DEA efficiency, and MILP unit allocation.</p>
       <div class="chart-box"><canvas id="chart-consistency"></canvas></div>
     </div>
     <div class="card">
-      <h3>Where the money goes (Regime A, top 15)</h3>
+      <h3>County allocation details (Regime A, top 15)</h3>
       <div class="table-wrap"><table id="budget-table" class="data-table"></table></div>
     </div>
     <div class="card chat-card">
@@ -215,12 +228,12 @@
   <section class="panel" id="panel-analyst">
     <div class="card">
       <h3>Ask the Analyst</h3>
-      <p class="muted">A cross-cutting assistant with access to the national summary, per-county results, vulnerability drivers and budget allocations. Try one of these:</p>
+      <p class="muted">An AI-powered decision support assistant grounded exclusively in pre-computed research findings across all three modeling tiers:</p>
       <div class="suggestions">
-        <button class="sugg">Which 5 counties should get AHP projects first, and why?</button>
-        <button class="sugg">Why does the model beat a simple cost-only screening rule?</button>
-        <button class="sugg">Is the Housing Levy enough to solve the backlog?</button>
-        <button class="sugg">Compare Nairobi and West Pokot as investment cases.</button>
+        <button class="sugg">Which 5 counties should receive AHP housing investments first, and why?</button>
+        <button class="sugg">Why does the ML model outperform simple cost-only screening rules?</button>
+        <button class="sugg">Is the statutory Housing Levy revenue sufficient to clear the vulnerability backlog?</button>
+        <button class="sugg">Compare Nairobi and West Pokot across vulnerability, efficiency, and budget allocation.</button>
       </div>
       <div class="chat" data-chat-tab="analyst"></div>
     </div>
@@ -228,8 +241,7 @@
 </main>
 
 <footer>
-  <p>Built from the HFVS Vulnerability Chain dissertation analysis · Kenya Housing Survey 2023/24 (21,347 households, 47 counties).
-  All figures are pre-computed research results; the AI assistant explains them but never invents numbers.</p>
+  <p>Built from the HFVS Vulnerability Chain dissertation research · Kenya Housing Survey 2023/24 (21,347 households, 47 counties). All metrics reflect empirical model findings.</p>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

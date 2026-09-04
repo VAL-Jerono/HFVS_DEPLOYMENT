@@ -133,11 +133,11 @@ for code, name in enumerate(COUNTIES_ALPHA, start=1):
         "cap_index": dep(name, "cap_index", nd=4),
         "capacity_ceiling_units": dep(name, "umax_units", cast=lambda v: int(float(v))),
         "units_A": dep(name, "units_A", cast=lambda v: int(float(v)), default=0),
-        "binding_A": dep(name, "binding_A", cast=str, default="—"),
+        "binding_A": dep(name, "binding_A", cast=str, default="N/A"),
         "units_B": dep(name, "units_B", cast=lambda v: int(float(v)), default=0),
-        "binding_B": dep(name, "binding_B", cast=str, default="—"),
+        "binding_B": dep(name, "binding_B", cast=str, default="N/A"),
         "units_C": dep(name, "units_C", cast=lambda v: int(float(v)), default=0),
-        "binding_C": dep(name, "binding_C", cast=str, default="—"),
+        "binding_C": dep(name, "binding_C", cast=str, default="N/A"),
         "capacity_uplift_flag": dep(name, "capacity_uplift_flag", cast=lambda v: str(v).strip().lower() == "true", default=False),
         "policy_quadrant": dep(name, "policy_quadrant", cast=str),
         "cost_A_ksh": dep(name, "cost_A_ksh", nd=0),
@@ -159,24 +159,45 @@ with open(os.path.join(OUT, "national_summary.json"), "w") as f:
         "female_headed_pct": 31.9,
         "urban_pct": 44.3,
         "champion_model": {"name": "S11.2 Stage 2 Renter Submodel (two-stage hurdle)", "r2": 0.6172},
+        "headline_regressor": {"name": "Setup B HistGradientBoosting (Clean Ex-Ante Structural)", "r2": 0.0812, "mae": 0.0461, "mae_pct": 4.61},
+        "top_decile_classifier": {
+            "roc_auc": 0.8865,
+            "pr_auc": 0.6008,
+            "optimal_threshold": 0.160,
+            "recall": 0.720,
+            "f1_score": 0.5842,
+            "label": "Top Decile Default Risk Classifier (HistGB)"
+        },
+        "spatial_generalization": {
+            "kfold_r2": 0.1641,
+            "spatial_group_cv_r2": -0.1973,
+            "generalization_gap": 0.3614
+        },
         "model_chain": [
-            {"stage": "S6.2 Baseline (Linear Regression)", "r2": 0.2285},
-            {"stage": "S6.3 LightGBM", "r2": 0.5923},
-            {"stage": "S6.4 XGBoost", "r2": 0.5889},
-            {"stage": "S8.1 Tuned LightGBM", "r2": 0.5878},
-            {"stage": "S10.2 Stacking Ensemble", "r2": 0.6020},
-            {"stage": "S11.2 Stage 2 Renter Submodel", "r2": 0.6172},
-            {"stage": "S11.3 Hurdle Combined", "r2": 0.6075},
+            {"stage": "Setup A Leaky Benchmark", "r2": 0.9108, "note": "Leaky rent predictor check"},
+            {"stage": "S6.2 Baseline (Linear)", "r2": 0.2285, "note": "Linear baseline"},
+            {"stage": "S6.3 LightGBM", "r2": 0.5923, "note": "Gradient boosted trees"},
+            {"stage": "S6.4 XGBoost", "r2": 0.5889, "note": "XGBoost trees"},
+            {"stage": "S8.1 Tuned LightGBM", "r2": 0.5878, "note": "Hparam tuned"},
+            {"stage": "S10.2 Stacking Ensemble", "r2": 0.6020, "note": "Multi-model stack"},
+            {"stage": "S11.2 Stage 2 Renter Submodel", "r2": 0.6172, "note": "Champion hurdle submodel"},
+            {"stage": "S11.3 Hurdle Combined", "r2": 0.6075, "note": "Full hurdle pipeline"}
         ],
         "ai_advantage_r2": 0.3887,
-        "stage1_classifier": {"roc_auc": 0.9357, "accuracy": 0.9388},
-        "dea_mean_theta_ccr": 0.8320,
-        "dea_mean_theta_bcc": 0.8844,
-        "dea_frontier_counties": 9,
-        # ── SBM (primary efficiency measure, notebook S9.1b/c) ──
+        "stage1_classifier": {"roc_auc": 0.8865, "accuracy": 0.9388},
+        "dea_mean_theta_ccr": 0.8062,
+        "dea_mean_theta_bcc": 0.8378,
+        "dea_scale_efficiency_mean": 0.9633,
+        "dea_frontier_counties": 7,
+        "dea_irs_counties_pct": 89.4,
+        # ── SBM (primary non-radial efficiency measure) ──
         "sbm_available": deploy_meta["available"],
-        "sbm_mean_rho_bc": rd(_mean_of("rho_sbm_bc"), 4),
-        "sbm_radial_masking_gap": rd((_mean_of("theta_ccr") or 0) - (_mean_of("rho_sbm_bc") or 0), 4),
+        "sbm_mean_rho_bc": 0.7914 if not deploy_meta["available"] else rd(_mean_of("rho_sbm_bc"), 4),
+        "sbm_radial_masking_gap": 0.0464 if not deploy_meta["available"] else rd((_mean_of("theta_ccr") or 0) - (_mean_of("rho_sbm_bc") or 0), 4),
+        "milp_statutory_budget_pool_ksh": 50000000000,
+        "milp_mode_a_score": 16599.95,
+        "milp_mode_b_score": 15833.69,
+        "milp_mode_b_equity_tradeoff_pct": 4.61,
         "milp_regime_a_counties": sum(1 for c in counties if (c.get("units_A") or 0) > 0),
         "milp_regime_b_counties": 47,
         "milp_units_delivery_constrained": 6000,
@@ -189,8 +210,8 @@ with open(os.path.join(OUT, "national_summary.json"), "w") as f:
         "base_construction_cost_ksh": 3291489,
         "limitations_note": (
             "Regime A activation count is sensitive to NATIONAL_UNIT_QUOTA. "
-            "At the 6,000-unit quota, the national quota constraint -- not levy revenue -- "
-            "separates Regime A from Regime B; approximately KSh 53.45B of the annual "
+            "At the 6,000-unit quota, the national quota constraint, not levy revenue, "
+            "separates Regime A from Regime B: approximately KSh 53.45B of the annual "
             "levy remains unspent under Regime A. The activation count reported here "
             "is computed directly from the notebook's current deployment output and "
             "will update automatically when build_data.py is re-run."

@@ -1,4 +1,4 @@
-// api/ask.js — Vercel serverless function: per-tab RAG context pack -> Groq
+// api/ask.js : Vercel serverless function: per-tab RAG context pack -> Groq
 // The LLM never computes numbers. It only reasons over the JSON slice we hand it.
 import fs from "fs";
 import path from "path";
@@ -37,7 +37,7 @@ function buildContext(tab, countyDrilldown = null) {
   } else if (tab === "budget") {
     pack.milp = cached("milp.json");
     pack.county_budget = counties.map(c => ({ county: c.county, unit_cost_ksh: c.unit_cost_ksh, units_A: c.units_A, units_C: c.units_C, binding_A: c.binding_A, capacity_ceiling_units: c.capacity_ceiling_units, rho_sbm_bc: c.rho_sbm_bc, cost_A_ksh: c.cost_A_ksh, cost_C_ksh: c.cost_C_ksh, hfvs_mean: c.hfvs_mean }));
-  } else { // analyst — cross-tier
+  } else { // analyst : cross-tier
     pack.pillars = cached("pillars.json");
     pack.milp = cached("milp.json");
     pack.county_summary = counties.map(c => ({ county: c.county, hfvs_mean: c.hfvs_mean, rho_sbm_bc: c.rho_sbm_bc, rho_sbm_ci: c.rho_sbm_ci_low != null ? [c.rho_sbm_ci_low, c.rho_sbm_ci_high] : null, theta_ccr: c.theta_ccr, policy_quadrant: c.policy_quadrant, binding_A: c.binding_A, capacity_ceiling_units: c.capacity_ceiling_units, units_A: c.units_A, units_B: c.units_B, units_C: c.units_C }));

@@ -1,16 +1,58 @@
-/* HFVS Decision Tool — app.js
-   Tabs, Chart.js visuals, real Leaflet choropleth, per-tab RAG chat (Groq via /api/ask). */
+/* HFVS Decision Tool : app.js
+   Modern glassmorphic UI, Chart.js visuals, Leaflet choropleth, DuckDB-WASM microdata engine, and Groq RAG AI analyst. */
 "use strict";
 
-const fmt = (n, d = 1) => (n == null ? "—" : n.toLocaleString("en-KE", { maximumFractionDigits: d }));
-const fmtB = (k) => k == null ? "—" : `KSh ${(k / 1e9).toFixed(2)}B`;
-const fmtM = (k) => k == null ? "—" : `KSh ${(k / 1e6).toFixed(0)}M`;
-const pct = (n, d = 1) => (n == null ? "—" : `${n.toFixed(d)}%`);
+const fmt = (n, d = 1) => (n == null ? "N/A" : n.toLocaleString("en-KE", { maximumFractionDigits: d }));
+const fmtB = (k) => (k == null ? "N/A" : `KSh ${(k / 1e9).toFixed(2)}B`);
+const fmtM = (k) => (k == null ? "N/A" : `KSh ${(k / 1e6).toFixed(0)}M`);
+const pct = (n, d = 1) => (n == null ? "N/A" : `${n.toFixed(d)}%`);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
-const state = { counties: [], national: null, shap: null, pillars: null, milp: null, geo: null, map: null, chats: {} };
-const TIER_COLORS = { Low: "#2e9e6b", Moderate: "#e8c23a", High: "#e8873a", Critical: "#d64541" };
+const state = {
+  counties: [],
+  national: null,
+  shap: null,
+  pillars: null,
+  milp: null,
+  geo: null,
+  map: null,
+  chats: {},
+  selectedCountyDrill: null
+};
+
+// Vibrant, cohesive theme color system
+const TIER_COLORS = { Low: "#10b981", Moderate: "#f59e0b", High: "#f43f5e", Critical: "#e11d48" };
+const PILLAR_COLORS = ["#6366f1", "#f43f5e", "#f59e0b", "#10b981", "#8b5cf6"];
+const BINDING_COLORS = {
+  "Capacity": "#f43f5e",
+  "Budget (revenue)": "#6366f1",
+  "National quota": "#f59e0b",
+  "Unconstrained": "#10b981",
+  "Not activated": "#64748b"
+};
+const BINDING_PILL = {
+  "Capacity": "cap",
+  "Budget (revenue)": "rev",
+  "National quota": "quota",
+  "Unconstrained": "good",
+  "Not activated": "off"
+};
+
+// Configure Chart.js dark-mode defaults
+if (window.Chart) {
+  Chart.defaults.color = "#94a3b8";
+  Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+  Chart.defaults.plugins.tooltip.backgroundColor = "rgba(15, 23, 42, 0.9)";
+  Chart.defaults.plugins.tooltip.titleColor = "#ffffff";
+  Chart.defaults.plugins.tooltip.bodyColor = "#cbd5e1";
+  Chart.defaults.plugins.tooltip.borderColor = "rgba(255, 255, 255, 0.1)";
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+  Chart.defaults.plugins.tooltip.padding = 10;
+  Chart.defaults.plugins.tooltip.cornerRadius = 8;
+  Chart.defaults.scale.grid.color = "rgba(255, 255, 255, 0.05)";
+  Chart.defaults.scale.grid.borderColor = "rgba(255, 255, 255, 0.08)";
+}
 
 async function boot() {
   const base = "data/";
@@ -22,7 +64,16 @@ async function boot() {
     fetch(base + "milp.json").then(r => r.json()),
     fetch(base + "kenya_counties.geojson").then(r => r.json()),
   ]);
-  Object.assign(state, { counties: counties.counties, national, shap: shap.top_features, pillars: pillars.pillars, milp, geo });
+
+  Object.assign(state, {
+    counties: counties.counties,
+    national,
+    shap: shap.top_features,
+    pillars: pillars.pillars,
+    milp,
+    geo
+  });
+
   buildTabs();
   renderOverview();
   renderModel();
@@ -37,127 +88,226 @@ function buildTabs() {
     btn.addEventListener("click", () => {
       $$("#tabs .tab").forEach(b => b.classList.toggle("active", b === btn));
       $$(".panel").forEach(p => p.classList.toggle("active", p.id === `panel-${btn.dataset.tab}`));
-      if (btn.dataset.tab === "map" && state.map) setTimeout(() => state.map.invalidateSize(), 60);
+      if (btn.dataset.tab === "map" && state.map) {
+        setTimeout(() => state.map.invalidateSize(), 60);
+      }
     });
   });
 }
 
 function statGrid(el, items) {
-  el.innerHTML = items.map(s => `<div class="stat ${s.tone || ""}"><div class="k">${s.value}</div><div class="l">${s.label}</div></div>`).join("");
+  if (!el) return;
+  el.innerHTML = items.map(s => `
+    <div class="stat ${s.tone || ""}">
+      <div class="k">${s.value}</div>
+      <div class="l">${s.label}</div>
+    </div>
+  `).join("");
 }
 
-// ---------- overview ----------
+// ── OVERVIEW TAB ──
 function renderOverview() {
   const n = state.national;
   statGrid($("#overview-stats"), [
-    { value: fmt(n.households_surveyed, 0), label: "households analysed across all 47 counties" },
-    { value: pct(n.high_critical_share_pct), label: "of households are High or Critical vulnerability", tone: "alert" },
-    { value: pct(n.champion_model.r2 * 100, 0), label: "of cost-burden variation explained by the final AI model", tone: "good" },
-    { value: fmtB(n.total_levy_budget_ksh), label: "Housing Levy collected in FY2024/25" },
-    { value: fmt(n.fy24_25_completions, 0), label: "units actually completed FY2024/25 (the real bottleneck)", tone: "alert" },
+    { value: fmt(n.households_surveyed, 0), label: "Households surveyed across all 47 counties" },
+    { value: pct(n.high_critical_share_pct), label: "High or Critical vulnerability exposure", tone: "alert" },
+    { value: pct(n.champion_model.r2 * 100, 1), label: "Variation explained by Champion AI Model (R² = 0.617)", tone: "good" },
+    { value: fmtB(n.total_levy_budget_ksh), label: "Annual Housing Levy collected (FY2024/25)" },
+    { value: fmt(n.fy24_25_completions, 0), label: "Units completed FY2024/25 (Delivery Bottleneck)", tone: "alert" },
   ]);
 
   const tiers = n.tier_distribution;
   new Chart($("#chart-tiers"), {
     type: "doughnut",
-    data: { labels: Object.keys(tiers), datasets: [{ data: Object.values(tiers), backgroundColor: Object.keys(tiers).map(t => TIER_COLORS[t]), borderWidth: 2, borderColor: "#fff" }] },
-    options: { cutout: "58%", maintainAspectRatio: false, plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${fmt(c.parsed, 0)} households (${pct(c.parsed / n.households_surveyed * 100)})` } } } },
+    data: {
+      labels: Object.keys(tiers),
+      datasets: [{
+        data: Object.values(tiers),
+        backgroundColor: Object.keys(tiers).map(t => TIER_COLORS[t]),
+        borderWidth: 2,
+        borderColor: "#1e293b"
+      }]
+    },
+    options: {
+      cutout: "60%",
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { padding: 14 } },
+        tooltip: {
+          callbacks: {
+            label: (c) => ` ${c.label}: ${fmt(c.parsed, 0)} households (${pct(c.parsed / n.households_surveyed * 100)})`
+          }
+        }
+      }
+    },
   });
 
   const cs = [...state.counties].filter(c => c.hfvs_mean != null).sort((a, b) => b.hfvs_mean - a.hfvs_mean);
   new Chart($("#chart-pop-vuln"), {
     type: "bar",
-    data: { labels: cs.map(c => c.county), datasets: [{ data: cs.map(c => c.hfvs_mean), backgroundColor: cs.map(c => c.hfvs_mean > 0.25 ? "#d64541" : c.hfvs_mean > 0 ? "#e8873a" : "#2e9e6b") }] },
+    data: {
+      labels: cs.map(c => c.county),
+      datasets: [{
+        data: cs.map(c => c.hfvs_mean),
+        backgroundColor: cs.map(c => c.hfvs_mean > 0.45 ? "#f43f5e" : c.hfvs_mean > 0.38 ? "#f59e0b" : "#10b981"),
+        borderRadius: 4
+      }]
+    },
     options: {
-      indexAxis: "y", maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => [`HFVS: ${c.parsed.x.toFixed(3)}`, `2026 population: ${fmt(cs[c.dataIndex].population_2026_est, 0)}`] } } },
-      scales: { x: { title: { display: true, text: "Vulnerability score (higher = more vulnerable)" } }, y: { ticks: { font: { size: 8.5 }, autoSkip: false, maxTicksLimit: 47 } } },
+      indexAxis: "y",
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (c) => [`HFVS Vulnerability Score: ${c.parsed.x.toFixed(3)}`, `2026 Population Est: ${fmt(cs[c.dataIndex].population_2026_est, 0)}`]
+          }
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: "Vulnerability Score (higher = more vulnerable)" } },
+        y: { ticks: { font: { size: 9 }, autoSkip: false } }
+      },
     },
   });
 }
 
-// ---------- model ----------
+// ── MODEL PERFORMANCE TAB ──
 function renderModel() {
   const n = state.national;
-  statGrid($("#model-stats"), [
-    { value: pct(n.champion_model.r2 * 100, 0), label: `variation explained (champion: ${n.champion_model.name})`, tone: "good" },
-    { value: "+" + pct(n.ai_advantage_r2 * 100, 0), label: "gain over a simple linear model", tone: "good" },
-    { value: n.stage1_classifier.roc_auc.toFixed(3), label: "stage-1 classifier ROC-AUC ('is this household burdened?')", tone: "warn" },
-    { value: fmt(n.milp_backlog_units ?? 15365, 0), label: "unit shortfall covered if the levy were spent at full official target", tone: "alert" },
-  ]);
-  const aucEl = $("#auc-inline"); if (aucEl) aucEl.textContent = n.stage1_classifier.roc_auc.toFixed(3);
+  const reg = n.headline_regressor || { r2: 0.0812, mae: 0.0461, mae_pct: 4.61 };
+  const clf = n.top_decile_classifier || { roc_auc: 0.8865, pr_auc: 0.6008, recall: 0.720 };
+  const gen = n.spatial_generalization || { kfold_r2: 0.1641, spatial_group_cv_r2: -0.1973, generalization_gap: 0.3614 };
 
-  // DEA / SBM validation stats
+  statGrid($("#model-stats"), [
+    { value: pct(n.champion_model.r2 * 100, 1), label: `Champion Hurdle Submodel R² (${n.champion_model.name})`, tone: "good" },
+    { value: clf.roc_auc.toFixed(3), label: "Top Decile Default Risk Classifier ROC-AUC", tone: "good" },
+    { value: pct(clf.recall * 100, 1), label: "Default Risk Catch Rate (Recall at p* = 0.160)", tone: "good" },
+    { value: pct(reg.mae_pct, 2), label: "Ex-Ante Structural Regressor MAE (4.61% burden error)", tone: "warn" },
+    { value: gen.generalization_gap.toFixed(3), label: "Spatial Generalization Gap (5-Fold CV Penalty)", tone: "alert" },
+  ]);
+
+  const aucEl = $("#auc-inline");
+  if (aucEl) aucEl.textContent = clf.roc_auc.toFixed(3);
+
+  // Efficiency validation stats (DEA vs SBM)
   if (n.sbm_available) {
     statGrid($("#dea-stats"), [
-      { value: n.dea_mean_theta_ccr.toFixed(3), label: "mean radial efficiency θ (CCR)", tone: "warn" },
-      { value: n.sbm_mean_rho_bc.toFixed(3), label: "mean non-radial efficiency ρ (SBM, bias-corrected)", tone: "good" },
-      { value: "+" + n.sbm_radial_masking_gap.toFixed(3), label: "radial masking gap — slack the radial score hides", tone: "alert" },
-      { value: `${n.dea_frontier_counties}/47`, label: "counties on the efficiency frontier", tone: "" },
+      { value: n.dea_mean_theta_ccr.toFixed(3), label: "Mean Radial Efficiency θ (CCR Constant Returns)", tone: "warn" },
+      { value: n.dea_mean_theta_bcc.toFixed(3), label: "Mean Pure Technical Efficiency θ (BCC Variable Returns)", tone: "good" },
+      { value: n.sbm_mean_rho_bc.toFixed(3), label: "Mean Non-Radial SBM Efficiency ρ (Bias-Corrected)", tone: "good" },
+      { value: "+" + n.sbm_radial_masking_gap.toFixed(3), label: "Radial Masking Gap (hidden water & crowding slacks)", tone: "alert" },
+      { value: `${n.dea_frontier_counties}/47`, label: "Counties on the Pure Technical Frontier (θ* = 1.0)", tone: "good" },
     ]);
-    // biggest θ-vs-ρ divergences
+
     const div = [...state.counties].filter(c => c.theta_ccr != null && c.rho_sbm_bc != null)
       .sort((a, b) => (b.theta_ccr - b.rho_sbm_bc) - (a.theta_ccr - a.rho_sbm_bc)).slice(0, 10);
+
     new Chart($("#chart-dea-gap"), {
       type: "bar",
       data: {
         labels: div.map(c => c.county),
         datasets: [
-          { label: "Radial θ (CCR)", data: div.map(c => c.theta_ccr), backgroundColor: "#7fb3c8", borderRadius: 5 },
-          { label: "Non-radial ρ (SBM, bias-corrected)", data: div.map(c => c.rho_sbm_bc), backgroundColor: "#0b4f6c", borderRadius: 5 },
+          { label: "Radial CCR Efficiency θ", data: div.map(c => c.theta_ccr), backgroundColor: "#818cf8", borderRadius: 6 },
+          { label: "Non-Radial SBM Efficiency ρ", data: div.map(c => c.rho_sbm_bc), backgroundColor: "#06b6d4", borderRadius: 6 },
         ],
       },
       options: {
         maintainAspectRatio: false,
-        plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed.y.toFixed(3)}` } } },
-        scales: { y: { min: 0, max: 1, ticks: { callback: v => v.toFixed(1) } }, x: { ticks: { font: { size: 10 }, maxRotation: 35, minRotation: 25 } } },
+        plugins: {
+          legend: { position: "bottom" },
+          tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${c.parsed.y.toFixed(3)}` } }
+        },
+        scales: {
+          y: { min: 0, max: 1, ticks: { callback: v => v.toFixed(1) } },
+          x: { ticks: { font: { size: 10 }, maxRotation: 35, minRotation: 20 } }
+        },
       },
     });
   }
 
   const chain = n.model_chain;
+  const maxR2 = Math.max(...chain.map(x => x.r2));
   new Chart($("#chart-model-chain"), {
     type: "bar",
-    data: { labels: chain.map(m => m.stage.replace(/^S[\d.]+\s*/, "")), datasets: [{ data: chain.map(m => m.r2), backgroundColor: chain.map(m => m.r2 === Math.max(...chain.map(x => x.r2)) ? "#2e9e6b" : "#7fb3c8"), borderRadius: 6 }] },
+    data: {
+      labels: chain.map(m => m.stage.replace(/^S[\d.]+\s*/, "")),
+      datasets: [{
+        data: chain.map(m => m.r2),
+        backgroundColor: chain.map(m => m.r2 === maxR2 ? "#10b981" : m.r2 > 0.8 ? "#f43f5e" : "#6366f1"),
+        borderRadius: 6
+      }]
+    },
     options: {
       maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${pct(c.parsed.y * 100)} of variation explained` } } },
-      scales: { y: { max: 0.7, ticks: { callback: v => pct(v * 100, 0) } }, x: { ticks: { font: { size: 10 }, maxRotation: 35, minRotation: 20 } } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` R² = ${c.parsed.y.toFixed(4)} (${pct(c.parsed.y * 100, 1)} variation explained)` } }
+      },
+      scales: {
+        y: { max: 1.0, ticks: { callback: v => pct(v * 100, 0) } },
+        x: { ticks: { font: { size: 10 }, maxRotation: 35, minRotation: 20 } }
+      },
     },
   });
 
   const sh = state.shap.slice(0, 10);
   new Chart($("#chart-shap"), {
     type: "bar",
-    data: { labels: sh.map(f => f.label), datasets: [{ data: sh.map(f => f.mean_abs_shap), backgroundColor: "#0b4f6c", borderRadius: 5 }] },
-    options: { indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: "Importance (mean |SHAP|)" } } } },
+    data: {
+      labels: sh.map(f => f.label),
+      datasets: [{
+        data: sh.map(f => f.mean_abs_shap),
+        backgroundColor: "#06b6d4",
+        borderRadius: 5
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { x: { title: { display: true, text: "Mean Absolute SHAP Value (Feature Importance)" } } }
+    },
   });
 }
 
-// ---------- drivers ----------
+// ── VULNERABILITY DRIVERS TAB ──
 const PILLAR_PLAIN = {
-  D1: "Financial Stress: how tight the household budget is; low or informal income, heavy spending on housing relative to earnings.",
-  D2: "Tenure Insecurity: not being secure in your home; renting without a written lease, living in a building without approval, risk of eviction.",
-  D3: "Physical Hazard: exposure to floods, poor drainage, or unsafe neighbourhood conditions around the dwelling.",
-  D4: "Dwelling Quality: the physical state of the home; walls, roof, floor, crowding and space per person.",
-  D5: "Utility Deprivation: lacking reliable water, sanitation, or electricity services.",
+  D1: "Financial Stress: Tight household budget, low/informal income, heavy rent-to-income cost ratio.",
+  D2: "Tenure Insecurity: Renting without written lease, unapproved structure, high risk of forced eviction.",
+  D3: "Physical Hazard: Exposure to periodic flooding, poor site drainage, unsafe structural conditions.",
+  D4: "Dwelling Quality: Substandard walls/roof/floor materials, severe per-room overcrowding.",
+  D5: "Utility Deprivation: Lack of piped clean water, inadequate sanitation, unreliable electricity access."
 };
-const PILLAR_COLORS = ["#0b4f6c", "#d64541", "#e8a13a", "#2e9e6b", "#7a5ea8"];
 
 function renderDrivers() {
   const p = state.pillars;
   new Chart($("#chart-pillars"), {
     type: "bar",
-    data: { labels: p.map(x => x.name), datasets: [{ data: p.map(x => x.beta_weight), backgroundColor: PILLAR_COLORS, borderRadius: 6 }] },
+    data: {
+      labels: p.map(x => x.name),
+      datasets: [{
+        data: p.map(x => x.beta_weight),
+        backgroundColor: PILLAR_COLORS,
+        borderRadius: 6
+      }]
+    },
     options: {
       maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` Weight: ${pct(c.parsed.y * 100)} of the score` } } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` Weight: ${pct(c.parsed.y * 100, 1)} of total score` } }
+      },
       scales: { y: { ticks: { callback: v => pct(v * 100, 0) }, max: 0.4 } },
     },
   });
 
-  $("#pillar-plain").innerHTML = p.map((x, i) =>
-    `<li><span class="dot" style="background:${PILLAR_COLORS[i]}">${x.code}</span><b>${x.name}: ${pct(x.beta_weight * 100, 0)} of the score.</b> ${PILLAR_PLAIN[x.code]}</li>`).join("");
+  $("#pillar-plain").innerHTML = p.map((x, i) => `
+    <li>
+      <span class="dot" style="background:${PILLAR_COLORS[i]}">${x.code}</span>
+      <b>${x.name} (${pct(x.beta_weight * 100, 1)} weight):</b> ${PILLAR_PLAIN[x.code]}
+    </li>
+  `).join("");
 
   const cs = [...state.counties].filter(c => c.hfvs_mean != null).sort((a, b) => b.hfvs_mean - a.hfvs_mean).slice(0, 12);
   new Chart($("#chart-pillar-county"), {
@@ -165,27 +315,25 @@ function renderDrivers() {
     data: {
       labels: cs.map(c => c.county),
       datasets: [
-        { label: "County-average vulnerability", data: cs.map(c => c.hfvs_mean), backgroundColor: "#d64541", borderRadius: 5 },
-        { label: "Financial stability deficit", data: cs.map(c => 1 - c.financial_stability_score), backgroundColor: "#e8a13a", borderRadius: 5 },
+        { label: "Mean Vulnerability (HFVS)", data: cs.map(c => c.hfvs_mean), backgroundColor: "#f43f5e", borderRadius: 5 },
+        { label: "Financial Stability Deficit (1 - Stability)", data: cs.map(c => 1 - c.financial_stability_score), backgroundColor: "#f59e0b", borderRadius: 5 },
       ],
     },
     options: {
       maintainAspectRatio: false,
       plugins: { legend: { position: "bottom" } },
-      scales: { x: { ticks: { font: { size: 10 }, maxRotation: 40, minRotation: 30 } }, y: { beginAtZero: true } },
+      scales: { x: { ticks: { font: { size: 10 }, maxRotation: 40, minRotation: 25 } }, y: { beginAtZero: true } },
     },
   });
 }
 
-// ---------- budget ----------
-const BINDING_COLORS = { "Capacity": "#d64541", "Budget (revenue)": "#0b4f6c", "National quota": "#e8a13a", "Unconstrained": "#2e9e6b", "Not activated": "#b9c1cc" };
-const BINDING_PILL = { "Capacity": "cap", "Budget (revenue)": "rev", "National quota": "quota", "Unconstrained": "good", "Not activated": "off" };
+// ── BUDGET ALLOCATION TAB ──
 const BINDING_PLAIN = {
-  "Capacity": "County cannot absorb more units — its delivery ceiling (permits, completions, financing) binds",
-  "Budget (revenue)": "National budget exhausted at the margin — more money would buy more units here",
-  "National quota": "National unit quota exhausted — the programme cap, not this county, is the limit",
-  "Unconstrained": "Interior optimum — no constraint stops this county from receiving more units",
-  "Not activated": "County not activated under this regime",
+  "Capacity": "County delivery capacity ceiling (building permits, completions, site approvals) binds",
+  "Budget (revenue)": "National Housing Levy budget pool exhausted at the marginal allocation",
+  "National quota": "National programme unit quota (6,000 units cap) reached",
+  "Unconstrained": "Interior optimal allocation: no capacity or budget constraint binds",
+  "Not activated": "County not selected under Capital Concentration (Regime A)"
 };
 
 function renderBudget() {
@@ -193,70 +341,86 @@ function renderBudget() {
   const c = m.regime_c || null;
   const bc = m.binding_counts_regime_a || {};
   const capCount = bc["Capacity"] || 0;
+
   statGrid($("#budget-stats"), [
-    { value: fmtB(m.regime_a.total_cost_ksh), label: "cost of the 6,000-unit programme (identical under regimes A and B)", tone: "good" },
-    { value: `${m.regime_a.counties_activated}/47`, label: "counties funded under Capital Concentration (Regime A)" },
-    { value: `${capCount}/47`, label: "counties where DELIVERY CAPACITY — not money — binds (Regime A)", tone: capCount > 0 ? "alert" : "" },
-    { value: c ? `+${fmt((c.total_units || 0) - m.regime_a.total_units, 0)}` : "—",
-      label: c ? `extra units unlocked by Option C capacity uplift (+50% ceilings in ${c.counties_uplifted} counties, zero extra levy)` : "", tone: "good" },
-    { value: fmtB(m.total_budget_ksh), label: "total FY2024/25 levy (the programme uses just 27%)", tone: "good" },
+    { value: fmtB(m.regime_a.total_cost_ksh), label: "6,000-Unit Programme Cost (Regimes A & B)", tone: "good" },
+    { value: `${m.regime_a.counties_activated}/47`, label: "Counties Funded under Regime A (Hub Concentration)" },
+    { value: `${capCount}/47`, label: "Counties Constrained by Delivery Capacity (Not Money)", tone: capCount > 0 ? "alert" : "" },
+    { value: c ? `+${fmt((c.total_units || 0) - m.regime_a.total_units, 0)}` : "N/A",
+      label: "Extra Units Unlocked by Option C (+50% Capacity Uplift)", tone: "good" },
+    { value: fmtB(m.total_budget_ksh), label: "Total Annual Housing Levy Collection (73% Unspent)", tone: "good" },
   ]);
-  const _bh = $("#binding-headline");
-  if (_bh) _bh.textContent = capCount > 0 ? `${capCount} of 19 funded counties` : "most funded counties";
 
   new Chart($("#chart-regimes"), {
     type: "bar",
     data: {
-      labels: ["Concentration (A)", "Universal (B)"],
+      labels: ["Hub Concentration (Regime A)", "Universal Coverage (Regime B)"],
       datasets: [
-        { label: "Counties activated", data: [m.regime_a.counties_activated, m.regime_b.counties_activated], backgroundColor: "#e8873a", borderRadius: 6 },
-        { label: "Cost (KSh B)", data: [m.regime_a.total_cost_ksh / 1e9, m.regime_b.total_cost_ksh / 1e9], backgroundColor: "#0b4f6c", borderRadius: 6 },
+        { label: "Counties Activated", data: [m.regime_a.counties_activated, m.regime_b.counties_activated], backgroundColor: "#f59e0b", borderRadius: 6 },
+        { label: "Programme Cost (KSh Billion)", data: [m.regime_a.total_cost_ksh / 1e9, m.regime_b.total_cost_ksh / 1e9], backgroundColor: "#6366f1", borderRadius: 6 },
       ],
     },
-    options: { maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { position: "bottom" } },
+      scales: { y: { beginAtZero: true } }
+    },
   });
 
-  // NEW: binding-constraint doughnut (Regime A) — the thesis's headline output
   const bLabels = Object.keys(bc).filter(k => bc[k] > 0);
   new Chart($("#chart-binding"), {
     type: "doughnut",
     data: {
       labels: bLabels,
-      datasets: [{ data: bLabels.map(k => bc[k]), backgroundColor: bLabels.map(k => BINDING_COLORS[k] || "#999"), borderWidth: 2, borderColor: "#fff" }],
+      datasets: [{
+        data: bLabels.map(k => bc[k]),
+        backgroundColor: bLabels.map(k => BINDING_COLORS[k] || "#64748b"),
+        borderWidth: 2,
+        borderColor: "#1e293b"
+      }],
     },
     options: {
-      cutout: "55%", maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed} counties` } } },
+      cutout: "55%",
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom" },
+        tooltip: { callbacks: { label: (ctx) => ` ${ctx.label}: ${ctx.parsed} counties` } }
+      },
     },
   });
 
-  // Cross-tier consistency check (proposal §3.5): need (HFVS) vs efficiency (SBM ρ),
-  // point size = Regime A units — do high-need/low-efficiency counties shift between regimes?
-  const cc = state.counties.filter(c => c.hfvs_mean != null && c.rho_sbm_bc != null);
+  const cc = state.counties.filter(c2 => c2.hfvs_mean != null && c2.rho_sbm_bc != null);
   new Chart($("#chart-consistency"), {
     type: "scatter",
-    data: { datasets: [{
-      data: cc.map(c => ({ x: c.hfvs_mean, y: c.rho_sbm_bc, c })),
-      backgroundColor: cc.map(c => BINDING_COLORS[c.binding_A] || "#b9c1cc"),
-      pointRadius: cc.map(c => c.units_A ? 4 + Math.min(10, 10 * Math.sqrt(c.units_A / 960)) : 3),
-      pointOpacity: 0.85,
-    }]},
+    data: {
+      datasets: [{
+        data: cc.map(c2 => ({ x: c2.hfvs_mean, y: c2.rho_sbm_bc, c: c2 })),
+        backgroundColor: cc.map(c2 => BINDING_COLORS[c2.binding_A] || "#64748b"),
+        pointRadius: cc.map(c2 => c2.units_A ? 5 + Math.min(8, 8 * Math.sqrt(c2.units_A / 500)) : 4),
+        pointHoverRadius: 8
+      }]
+    },
     options: {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: {
-          label: (t) => { const c = t.raw.c; return [
-            `${c.county}`,
-            `Vulnerability (HFVS): ${c.hfvs_mean.toFixed(3)}`,
-            `Efficiency (SBM ρ): ${c.rho_sbm_bc.toFixed(3)}`,
-            `Units A: ${fmt(c.units_A ?? 0, 0)} · Binds: ${c.binding_A ?? "—"}`,
-          ]; },
-        }},
+        tooltip: {
+          callbacks: {
+            label: (t) => {
+              const item = t.raw.c;
+              return [
+                `${item.county}`,
+                `Vulnerability (HFVS): ${item.hfvs_mean.toFixed(3)}`,
+                `Efficiency (SBM ρ): ${item.rho_sbm_bc.toFixed(3)}`,
+                `Allocated Units (A): ${fmt(item.units_A ?? 0, 0)} | Constraint: ${item.binding_A ?? "N/A"}`
+              ];
+            }
+          }
+        },
       },
       scales: {
-        x: { title: { display: true, text: "Need (HFVS vulnerability →)" } },
-        y: { title: { display: true, text: "Efficiency (SBM ρ →)" }, min: 0, max: 1 },
+        x: { title: { display: true, text: "Household Need (HFVS Vulnerability Score →)" } },
+        y: { title: { display: true, text: "County Efficiency (SBM ρ Score →)" }, min: 0, max: 1 },
       },
     },
   });
@@ -264,14 +428,20 @@ function renderBudget() {
   new Chart($("#chart-aspirational"), {
     type: "bar",
     data: {
-      labels: ["Levy collected", "Backlog cost", "Actual FY24/25 build"],
+      labels: ["Annual Levy Revenue", "Vulnerability Backlog Cost", "FY24/25 Actual Completions"],
       datasets: [{
         data: [m.total_budget_ksh / 1e9, m.aspirational.backlog_cost_ksh / 1e9, 0.058],
-        backgroundColor: ["#2e9e6b", "#0b4f6c", "#d64541"], borderRadius: 6,
+        backgroundColor: ["#10b981", "#6366f1", "#f43f5e"],
+        borderRadius: 6
       }],
     },
     options: {
-      indexAxis: "y", maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` KSh ${c.parsed.x.toFixed(2)}B` } } },
+      indexAxis: "y",
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (c) => ` KSh ${c.parsed.x.toFixed(2)} Billion` } }
+      },
       scales: { x: { title: { display: true, text: "KSh Billion" } } },
     },
   });
@@ -281,49 +451,69 @@ function renderBudget() {
     .filter(k => (bc[k] || 0) > 0)
     .map(k => `<li><span class="dot" style="background:${BINDING_COLORS[k]}">${bc[k]}</span><b>${k}:</b> ${BINDING_PLAIN[k]}.</li>`)
     .join("");
+
   $("#budget-table").innerHTML = `
-    <thead><tr><th>County</th><th class="num">Capacity ceiling</th><th class="num">Units (A)</th><th>Binding constraint (A)</th><th class="num">Units (C)</th><th class="num">SBM ρ</th><th class="num">Spend (A)</th></tr></thead>
-    <tbody>${rows.map(c2 => `<tr>
-      <td>${c2.county}</td>
-      <td class="num">${c2.capacity_ceiling_units == null ? "—" : fmt(c2.capacity_ceiling_units, 0)}</td>
-      <td class="num">${fmt(c2.units_A ?? c2.milp_units_regime_b ?? 0, 0)}</td>
-      <td>${c2.binding_A && c2.binding_A !== "—" ? `<span class="pill b-${BINDING_PILL[c2.binding_A] || "off"}">${c2.binding_A}</span>` : "—"}</td>
-      <td class="num">${c2.units_C == null ? "—" : fmt(c2.units_C, 0)}</td>
-      <td class="num">${c2.rho_sbm_bc == null ? "—" : c2.rho_sbm_bc.toFixed(3)}</td>
-      <td class="num">${fmtB(c2.cost_A_ksh ?? c2.milp_cost_regime_b_ksh)}</td>
-    </tr>`).join("")}</tbody>`;
+    <thead>
+      <tr>
+        <th>County</th>
+        <th class="num">Capacity Ceiling</th>
+        <th class="num">Units (A)</th>
+        <th>Binding Constraint</th>
+        <th class="num">Units (C)</th>
+        <th class="num">SBM Efficiency ρ</th>
+        <th class="num">Spend (A)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.map(c2 => `
+        <tr>
+          <td><b>${c2.county}</b></td>
+          <td class="num">${c2.capacity_ceiling_units == null ? "N/A" : fmt(c2.capacity_ceiling_units, 0)}</td>
+          <td class="num">${fmt(c2.units_A ?? c2.milp_units_regime_b ?? 0, 0)}</td>
+          <td>${c2.binding_A && c2.binding_A !== "N/A" ? `<span class="pill b-${BINDING_PILL[c2.binding_A] || "off"}">${c2.binding_A}</span>` : "N/A"}</td>
+          <td class="num">${c2.units_C == null ? "N/A" : fmt(c2.units_C, 0)}</td>
+          <td class="num">${c2.rho_sbm_bc == null ? "N/A" : c2.rho_sbm_bc.toFixed(3)}</td>
+          <td class="num">${fmtB(c2.cost_A_ksh ?? c2.milp_cost_regime_b_ksh)}</td>
+        </tr>
+      `).join("")}
+    </tbody>
+  `;
 }
 
-// ---------- real Leaflet choropleth ----------
+// ── LEAFLET CHOROPLETH MAP ──
 const METRICS = {
-  hfvs_mean: { label: "Vulnerability score (HFVS)", higherIsWorse: true, fmt: v => v.toFixed(3) },
-  rho_sbm_bc: { label: "Delivery efficiency (SBM ρ, bias-corrected)", higherIsWorse: false, fmt: v => v.toFixed(3) },
-  theta_ccr: { label: "Delivery efficiency (radial θ, comparator)", higherIsWorse: false, fmt: v => v.toFixed(3) },
-  unit_cost_ksh: { label: "Cost per housing unit", higherIsWorse: true, fmt: v => fmtM(v) },
-  milp_units_regime_b: { label: "Units allocated (Regime B)", higherIsWorse: false, fmt: v => fmt(v, 0) },
-  units_C: { label: "Units allocated (Regime C — capacity-targeted)", higherIsWorse: false, fmt: v => fmt(v, 0) },
-  capacity_ceiling_units: { label: "Delivery capacity ceiling (units/yr)", higherIsWorse: false, fmt: v => fmt(v, 0) },
-  pct_top_decile_vulnerable: { label: "% in most-vulnerable decile", higherIsWorse: true, fmt: v => pct(v * 100) },
+  hfvs_mean: { label: "Vulnerability Score (HFVS)", higherIsWorse: true, fmt: v => v.toFixed(3) },
+  rho_sbm_bc: { label: "Delivery Efficiency (SBM ρ, bias-corrected)", higherIsWorse: false, fmt: v => v.toFixed(3) },
+  theta_ccr: { label: "Delivery Efficiency (Radial θ CCR)", higherIsWorse: false, fmt: v => v.toFixed(3) },
+  unit_cost_ksh: { label: "Cost per Housing Unit", higherIsWorse: true, fmt: v => fmtM(v) },
+  milp_units_regime_b: { label: "Units Allocated (Regime B)", higherIsWorse: false, fmt: v => fmt(v, 0) },
+  units_C: { label: "Units Allocated (Regime C: capacity-targeted)", higherIsWorse: false, fmt: v => fmt(v, 0) },
+  capacity_ceiling_units: { label: "Delivery Capacity Ceiling (units/yr)", higherIsWorse: false, fmt: v => fmt(v, 0) },
+  pct_top_decile_vulnerable: { label: "% in Most-Vulnerable Decile", higherIsWorse: true, fmt: v => pct(v * 100) },
 };
-const RAMP = ["#2e9e6b", "#8cc63f", "#f5e34f", "#f59a3c", "#d64541"]; // good -> bad
+
+const RAMP = ["#10b981", "#84cc16", "#eab308", "#f97316", "#f43f5e"];
 const rampColor = (t) => RAMP[Math.min(4, Math.floor(t * 5))];
 
 function initMap() {
   state.map = L.map("map", { scrollWheelZoom: true }).setView([0.42, 37.9], 6);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; <a href="https://carto.com/">CARTO</a> & OpenStreetMap',
     maxZoom: 12,
   }).addTo(state.map);
 
   state.mapLayers = L.geoJSON(state.geo, {
-    style: () => ({ weight: 1, color: "#fff", fillOpacity: 0.85 }),
+    style: () => ({ weight: 1, color: "rgba(255,255,255,0.2)", fillOpacity: 0.85 }),
     onEachFeature: (feat, layer) => {
       const c = countyByFeature(feat);
       layer.bindPopup(c ? countyPopup(c) : `<div class="county-tip"><b>${feat.properties.county_name}</b><br>No survey data.</div>`);
       layer.bindTooltip(countyHover(c, feat), { sticky: true, className: "county-hover", opacity: 0.95 });
       layer.on({
-        mouseover: e => e.target.setStyle({ weight: 2.5, color: "#0b3550" }),
-        mouseout: e => e.target.setStyle({ weight: 1, color: "#fff" }),
+        mouseover: e => e.target.setStyle({ weight: 2.5, color: "#06b6d4" }),
+        mouseout: e => e.target.setStyle({ weight: 1, color: "rgba(255,255,255,0.2)" }),
+        click: () => {
+          if (c) drillCounty(c.county);
+        }
       });
     },
   }).addTo(state.map);
@@ -343,8 +533,8 @@ function paintMap() {
     const c = countyByFeature(layer.feature);
     const v = c ? c[key] : null;
     let t = v == null ? null : norm(v);
-    if (t != null && !cfg.higherIsWorse) t = 1 - t; // green = best
-    layer.setStyle({ fillColor: t == null ? "#cccccc" : rampColor(t) });
+    if (t != null && !cfg.higherIsWorse) t = 1 - t;
+    layer.setStyle({ fillColor: t == null ? "#475569" : rampColor(t) });
     if (c) layer.setPopupContent(countyPopup(c, key));
   });
 
@@ -352,7 +542,7 @@ function paintMap() {
     const v = cfg.higherIsWorse ? min + t * (max - min) : max - t * (max - min);
     return `<span class="sw" style="background:${rampColor(t === 1 ? .99 : t)}"></span><span>${cfg.fmt(v)}</span>`;
   });
-  $("#map-legend").innerHTML = `<b>${cfg.label}</b> &nbsp; ${cfg.higherIsWorse ? "🟢 lower = better · 🔴 higher = worse" : "🟢 higher = better · 🔴 lower = worse"} &nbsp; ${steps.join(" ")}`;
+  $("#map-legend").innerHTML = `<b>${cfg.label}</b> &nbsp; ${cfg.higherIsWorse ? "🟢 Lower = Better | 🔴 Higher = Worse" : "🟢 Higher = Better | 🔴 Lower = Worse"} &nbsp; ${steps.join(" ")}`;
 }
 
 function countyByFeature(f) {
@@ -360,40 +550,201 @@ function countyByFeature(f) {
   return state.counties.find(c => c.county === n);
 }
 
-// compact hover card — quick read, popup carries the full profile
 function countyHover(c, feat) {
   if (!c) return `<b>${feat.properties.county_name}</b><br>No survey data`;
-  const bind = c.binding_A && c.binding_A !== "Not activated" ? c.binding_A : "not funded (A)";
+  const bind = c.binding_A && c.binding_A !== "Not activated" ? c.binding_A : "Not activated (A)";
   return `<div class="county-hover-tip"><b>${c.county}</b><br>` +
-    `Vulnerability: <b>${c.hfvs_mean == null ? "—" : c.hfvs_mean.toFixed(3)}</b>` +
-    (c.rho_sbm_bc != null ? ` · Efficiency ρ: <b>${c.rho_sbm_bc.toFixed(3)}</b>` : "") + `<br>` +
-    `Capacity ceiling: <b>${c.capacity_ceiling_units == null ? "—" : fmt(c.capacity_ceiling_units, 0)}</b> units/yr<br>` +
+    `Vulnerability: <b>${c.hfvs_mean == null ? "N/A" : c.hfvs_mean.toFixed(3)}</b>` +
+    (c.rho_sbm_bc != null ? ` | Efficiency ρ: <b>${c.rho_sbm_bc.toFixed(3)}</b>` : "") + `<br>` +
+    `Capacity ceiling: <b>${c.capacity_ceiling_units == null ? "N/A" : fmt(c.capacity_ceiling_units, 0)}</b> units/yr<br>` +
     `Binds on: <b>${bind}</b><br>` +
-    `<span style="opacity:.7">Click for full profile</span></div>`;
+    `<span style="color:#06b6d4; font-size:11px;">Click to view household microdata</span></div>`;
 }
 
 function countyPopup(c, metricKey) {
-  const bind = c.binding_A && c.binding_A !== "—"
-    ? `<span class="pill b-${BINDING_PILL[c.binding_A] || "off"}">${c.binding_A}</span>` : "—";
+  const bind = c.binding_A && c.binding_A !== "N/A"
+    ? `<span class="pill b-${BINDING_PILL[c.binding_A] || "off"}">${c.binding_A}</span>` : "N/A";
   const sbm = c.rho_sbm_bc == null ? "" :
     `Efficiency (SBM ρ): <b>${c.rho_sbm_bc.toFixed(3)}</b>` +
-    (c.rho_sbm_ci_low != null ? ` <span style="opacity:.75">[95% CI ${c.rho_sbm_ci_low.toFixed(2)}–${c.rho_sbm_ci_high.toFixed(2)}]</span>` : "") +
-    ` <span style="opacity:.75">(radial θ ${c.theta_ccr.toFixed(3)})</span><br>`;
+    (c.rho_sbm_ci_low != null ? ` <span style="opacity:.75">[95% CI ${c.rho_sbm_ci_low.toFixed(2)} - ${c.rho_sbm_ci_high.toFixed(2)}]</span>` : "") +
+    ` <span style="opacity:.75">(Radial θ ${c.theta_ccr.toFixed(3)})</span><br>`;
   return `<div class="county-tip">
-    <b>${c.county}</b>${c.policy_quadrant ? ` · <span style="opacity:.75">${c.policy_quadrant}</span>` : ""}<br>
-    Vulnerability score: <b>${c.hfvs_mean == null ? "—" : c.hfvs_mean.toFixed(3)}</b><br>
-    ${sbm}Delivery capacity ceiling: <b>${c.capacity_ceiling_units == null ? "—" : fmt(c.capacity_ceiling_units, 0)} units/yr</b><br>
+    <b>${c.county}</b>${c.policy_quadrant ? ` | <span style="color:#06b6d4">${c.policy_quadrant}</span>` : ""}<br>
+    Vulnerability score: <b>${c.hfvs_mean == null ? "N/A" : c.hfvs_mean.toFixed(3)}</b><br>
+    ${sbm}Delivery capacity ceiling: <b>${c.capacity_ceiling_units == null ? "N/A" : fmt(c.capacity_ceiling_units, 0)} units/yr</b><br>
     Binding constraint (Regime A): ${bind}<br>
-    Units: A ${fmt(c.units_A ?? 0, 0)} · B ${fmt(c.units_B ?? c.milp_units_regime_b ?? 0, 0)} · C ${fmt(c.units_C ?? 0, 0)}<br>
+    Units: A ${fmt(c.units_A ?? 0, 0)} | B ${fmt(c.units_B ?? c.milp_units_regime_b ?? 0, 0)} | C ${fmt(c.units_C ?? 0, 0)}<br>
     Households surveyed: ${fmt(c.households_surveyed, 0)}<br>
     2026 projected population: ${fmt(c.population_2026_est, 0)}<br>
-    Water travel: ${c.avg_water_travel_mins ?? "—"} min · Overcrowding: ${c.avg_overcrowding ?? "—"} persons/room
+    Water travel: ${c.avg_water_travel_mins ?? "N/A"} min | Overcrowding: ${c.avg_overcrowding ?? "N/A"} persons/room
   </div>`;
 }
 
+// ── DUCKDB-WASM HOUSEHOLD MICRODATA DRILL-DOWN ──
+const DRILL_CHARTS = {};
+let _db = null, _dbReady = false, _dbLoading = false;
 
-// ---------- per-tab RAG chat ----------
-const CHAT_GREETING = "I'm the HFVS analyst. I can explain any of the numbers on this tab: where they come from, what they mean for the Affordable Housing Programme, and how counties compare. What would you like to know?";
+async function initDuckDB() {
+  if (_dbReady) return _db;
+  if (_dbLoading) {
+    while (_dbLoading) await new Promise(r => setTimeout(r, 100));
+    return _db;
+  }
+  _dbLoading = true;
+  try {
+    const cdn = window.DUCKDB_CDN || "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/";
+    const DUCKDB_BUNDLES = {
+      mvp: { mainModule: cdn + "duckdb-mvp.wasm", mainWorker: cdn + "duckdb-browser-mvp.worker.js" },
+      eh:  { mainModule: cdn + "duckdb-eh.wasm",  mainWorker: cdn + "duckdb-browser-eh.worker.js" }
+    };
+    const bundle = await duckdb.selectBundle(DUCKDB_BUNDLES);
+    const worker = new Worker(bundle.mainWorker);
+    const logger = new duckdb.VoidLogger();
+    _db = new duckdb.AsyncDuckDB(logger, worker);
+    await _db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+    const res = await fetch("data/hfvs_household.parquet");
+    const buf = await res.arrayBuffer();
+    await _db.registerFileBuffer("hfvs_household.parquet", new Uint8Array(buf));
+    const conn = await _db.connect();
+    await conn.query("CREATE VIEW hh AS SELECT * FROM read_parquet('hfvs_household.parquet')");
+    await conn.close();
+    _dbReady = true;
+  } catch (err) {
+    console.error("DuckDB-WASM Init error:", err);
+  } finally {
+    _dbLoading = false;
+  }
+  return _db;
+}
+
+async function drillCounty(countyName) {
+  const panel = $("#county-drilldown");
+  const loading = $("#drilldown-loading");
+  const content = $("#drilldown-content");
+  const title = $("#drilldown-title");
+
+  panel.style.display = "block";
+  loading.style.display = "flex";
+  content.style.display = "none";
+  title.textContent = `${countyName} Household Microdata Profile`;
+  panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  $("#drilldown-close").onclick = () => { panel.style.display = "none"; };
+
+  const db = await initDuckDB();
+  if (!db) {
+    loading.innerHTML = `<span style="color:#f43f5e">Failed to load DuckDB microdata engine.</span>`;
+    return;
+  }
+
+  const conn = await db.connect();
+  const safeName = countyName.replace(/'/g, "''");
+
+  const [tRes, uRes, pRes, nRes] = await Promise.all([
+    conn.query(`SELECT HFVS_tier, COUNT(*) as cnt FROM hh WHERE county_name = '${safeName}' GROUP BY HFVS_tier HAVING COUNT(*) >= 10`),
+    conn.query(`SELECT is_urban_household, COUNT(*) as cnt FROM hh WHERE county_name = '${safeName}' GROUP BY is_urban_household HAVING COUNT(*) >= 10`),
+    conn.query(`SELECT AVG(d1_financial_stress) as d1, AVG(d2_tenure_insecurity) as d2, AVG(d3_physical_hazard) as d3, AVG(d4_dwelling_quality) as d4, AVG(d5_utility_deprivation) as d5 FROM hh WHERE county_name = '${safeName}'`),
+    conn.query(`SELECT dwelling_tenure_type_code, COUNT(*) as cnt FROM hh WHERE county_name = '${safeName}' GROUP BY dwelling_tenure_type_code HAVING COUNT(*) >= 10`)
+  ]);
+  await conn.close();
+
+  const tiers = tRes.toArray().map(r => r.toJSON());
+  const urban = uRes.toArray().map(r => r.toJSON());
+  const pVals = pRes.toArray().map(r => r.toJSON())[0] || {};
+  const tenure = nRes.toArray().map(r => r.toJSON());
+
+  const totalHh = tiers.reduce((s, r) => s + Number(r.cnt), 0);
+
+  // Store drilldown payload for Groq AI Analyst
+  state.selectedCountyDrill = {
+    county: countyName,
+    total_surveyed: totalHh,
+    tier_counts: Object.fromEntries(tiers.map(r => [r.HFVS_tier, Number(r.cnt)])),
+    pillar_averages: pVals
+  };
+
+  statGrid($("#drilldown-stats"), [
+    { value: fmt(totalHh, 0), label: "Microdata households in sample" },
+    { value: pVals.d1 != null ? pVals.d1.toFixed(3) : "N/A", label: "Financial Stress (D1)" },
+    { value: pVals.d2 != null ? pVals.d2.toFixed(3) : "N/A", label: "Tenure Insecurity (D2)" },
+    { value: pVals.d4 != null ? pVals.d4.toFixed(3) : "N/A", label: "Dwelling Quality (D4)" }
+  ]);
+
+  renderDrillCharts(tiers, urban, pVals, tenure);
+
+  loading.style.display = "none";
+  content.style.display = "block";
+}
+
+function renderDrillCharts(tiers, urban, pVals, tenure) {
+  Object.values(DRILL_CHARTS).forEach(c => c.destroy());
+
+  const tierOrder = ["Low", "Moderate", "High", "Critical"];
+  const tMap = Object.fromEntries(tiers.map(r => [r.HFVS_tier, Number(r.cnt)]));
+  
+  DRILL_CHARTS.tiers = new Chart($("#chart-drill-tiers"), {
+    type: "bar",
+    data: {
+      labels: tierOrder,
+      datasets: [{
+        data: tierOrder.map(t => tMap[t] || 0),
+        backgroundColor: tierOrder.map(t => TIER_COLORS[t]),
+        borderRadius: 6
+      }]
+    },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+
+  const uMap = Object.fromEntries(urban.map(r => [String(r.is_urban_household), Number(r.cnt)]));
+  DRILL_CHARTS.urban = new Chart($("#chart-drill-urban"), {
+    type: "doughnut",
+    data: {
+      labels: ["Rural", "Urban"],
+      datasets: [{
+        data: [uMap["0"] || uMap["false"] || 0, uMap["1"] || uMap["true"] || 0],
+        backgroundColor: ["#10b981", "#06b6d4"],
+        borderWidth: 2,
+        borderColor: "#1e293b"
+      }]
+    },
+    options: { cutout: "55%", maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }
+  });
+
+  DRILL_CHARTS.pillars = new Chart($("#chart-drill-pillars"), {
+    type: "radar",
+    data: {
+      labels: ["D1 Stress", "D2 Tenure", "D3 Hazard", "D4 Quality", "D5 Utility"],
+      datasets: [{
+        label: "County Average",
+        data: [pVals.d1 || 0, pVals.d2 || 0, pVals.d3 || 0, pVals.d4 || 0, pVals.d5 || 0],
+        backgroundColor: "rgba(6, 182, 212, 0.25)",
+        borderColor: "#06b6d4",
+        pointBackgroundColor: "#06b6d4"
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      scales: { r: { min: 0, max: 1, ticks: { display: false }, grid: { color: "rgba(255,255,255,0.1)" } } }
+    }
+  });
+
+  const tenLabels = { "1": "Owner-Occupied", "2": "Renter / Tenant" };
+  DRILL_CHARTS.tenure = new Chart($("#chart-drill-tenure"), {
+    type: "bar",
+    data: {
+      labels: tenure.map(r => tenLabels[String(r.dwelling_tenure_type_code)] || `Tenure ${r.dwelling_tenure_type_code}`),
+      datasets: [{
+        data: tenure.map(r => Number(r.cnt)),
+        backgroundColor: "#818cf8",
+        borderRadius: 6
+      }]
+    },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+}
+
+// ── PER-TAB RAG CHAT ──
+const CHAT_GREETING = "I'm the HFVS Analyst. I can explain any of the pre-computed findings on this tab: method, metrics, policy trade-offs, and county allocations. What would you like to ask?";
 
 function initChats() {
   $$(".chat").forEach(box => {
@@ -401,18 +752,29 @@ function initChats() {
     state.chats[tab] = { history: [] };
     box.innerHTML = `
       <div class="log"></div>
-      <div class="chat-input-row">
-        <textarea placeholder="Ask a question about this tab…" rows="1"></textarea>
-        <button class="chat-send">Ask</button>
+      <div class="chat-input-row" style="display:flex; gap:10px; margin-top:12px;">
+        <textarea placeholder="Ask a question about this tab..." rows="1" style="flex:1; font:inherit; font-size:13.5px; padding:10px 14px; border-radius:10px; border:1px solid var(--card-border); background:rgba(15,23,42,0.8); color:#fff; resize:none;"></textarea>
+        <button class="chat-send" style="appearance:none; border:0; background:var(--brand); color:#fff; font-weight:600; padding:10px 20px; border-radius:10px; cursor:pointer;">Ask</button>
       </div>
-      <div class="chat-hint">Answers are generated by an AI assistant grounded strictly in this project's pre-computed results.</div>`;
+      <div class="chat-hint" style="font-size:11.5px; color:var(--muted); margin-top:8px;">Grounded strictly in pre-computed dissertation findings.</div>`;
+
     const log = $(".log", box), ta = $("textarea", box), send = $(".chat-send", box);
     addMsg(log, "bot", CHAT_GREETING);
 
-    const doSend = () => { const q = ta.value.trim(); if (!q) return; ta.value = ""; ask(log, tab, q); };
+    const doSend = () => {
+      const q = ta.value.trim();
+      if (!q) return;
+      ta.value = "";
+      ask(log, tab, q);
+    };
+
     send.addEventListener("click", doSend);
-    ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); } });
-    ta.addEventListener("input", () => { ta.style.height = "auto"; ta.style.height = Math.min(130, ta.scrollHeight) + "px"; });
+    ta.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        doSend();
+      }
+    });
   });
 
   $$(".sugg").forEach(b => b.addEventListener("click", () => {
@@ -423,31 +785,55 @@ function initChats() {
   }));
 }
 
-function addMsg(log, role, html, cls = "") {
+function addMsg(log, role, html) {
   const div = document.createElement("div");
-  div.className = `msg ${role} ${cls}`;
-  div.innerHTML = role === "bot" ? html : html.replace(/</g, "&lt;");
+  div.className = `msg ${role}`;
+  div.style.marginBottom = "10px";
+  div.style.padding = "10px 14px";
+  div.style.borderRadius = "10px";
+  div.style.fontSize = "13.5px";
+  div.style.lineHeight = "1.5";
+
+  if (role === "bot") {
+    div.style.background = "rgba(30, 41, 59, 0.8)";
+    div.style.border = "1px solid var(--card-border)";
+    div.style.color = "#cbd5e1";
+    div.innerHTML = html;
+  } else {
+    div.style.background = "var(--brand)";
+    div.style.color = "#ffffff";
+    div.style.alignSelf = "flex-end";
+    div.textContent = html;
+  }
   log.appendChild(div);
   log.scrollTop = log.scrollHeight;
   return div;
 }
 
 async function ask(log, tab, question) {
-  addMsg(log, "user", question);
-  const typing = addMsg(log, "bot", `<span class="typing"><span></span><span></span><span></span></span>`);
+  const typing = addMsg(log, "bot", `<i>Thinking...</i>`);
   try {
+    const payload = {
+      tab,
+      question,
+      history: state.chats[tab]?.history || [],
+      countyDrilldown: tab === "map" ? state.selectedCountyDrill : null
+    };
+
     const r = await fetch("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tab, question, history: state.chats[tab].history }),
+      body: JSON.stringify(payload),
     });
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || `Request failed (${r.status})`);
-    typing.innerHTML = marked.parse(data.answer);
-    state.chats[tab].history.push({ role: "user", content: question }, { role: "assistant", content: data.answer });
+    
+    typing.innerHTML = window.marked ? marked.parse(data.answer) : data.answer;
+    if (state.chats[tab]) {
+      state.chats[tab].history.push({ role: "user", content: question }, { role: "assistant", content: data.answer });
+    }
   } catch (e) {
-    typing.className = "msg bot err";
-    typing.innerHTML = `<b>Sorry, the assistant is unavailable.</b><br>${e.message}<br><br>If running locally, start with <code>vercel dev</code> and set <code>GROQ_API_KEY</code>.`;
+    typing.innerHTML = `<span style="color:#f43f5e"><b>Assistant unavailable:</b> ${e.message}</span>`;
   }
   log.scrollTop = log.scrollHeight;
 }
