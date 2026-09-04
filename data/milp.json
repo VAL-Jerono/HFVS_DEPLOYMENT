@@ -2,10 +2,10 @@
  "total_budget_ksh": 73200000000,
  "regime_a": {
   "label": "Capital Concentration",
-  "counties_activated": 19,
+  "counties_activated": 26,
   "total_counties": 47,
   "total_units": 6000,
-  "total_cost_ksh": 19750000000
+  "total_cost_ksh": 19750934479.0
  },
  "regime_b": {
   "label": "Universal Coverage",
@@ -39,74 +39,74 @@
  "fy24_25_completions": 1795,
  "top10_regime_a": [
   {
-   "county": "Nairobi",
-   "units": 960,
-   "cost_ksh": 3160200000,
-   "hfvs_mean": 0.177,
-   "theta_ccr": 1.0
+   "county": "Mombasa",
+   "units": 553,
+   "cost_ksh": 1820203571.0,
+   "hfvs_mean": 0.3958,
+   "theta_ccr": 0.7666
   },
   {
-   "county": "Kisumu",
-   "units": 659,
-   "cost_ksh": 2169100000,
-   "hfvs_mean": -0.0839,
-   "theta_ccr": 0.893
+   "county": "Nairobi",
+   "units": 490,
+   "cost_ksh": 1613013537.0,
+   "hfvs_mean": 0.4233,
+   "theta_ccr": 0.5504
   },
   {
    "county": "Nakuru",
-   "units": 636,
-   "cost_ksh": 2093400000,
-   "hfvs_mean": 0.0369,
+   "units": 265,
+   "cost_ksh": 872244681.0,
+   "hfvs_mean": 0.433,
+   "theta_ccr": 0.8328
+  },
+  {
+   "county": "Laikipia",
+   "units": 261,
+   "cost_ksh": 859079702.0,
+   "hfvs_mean": 0.4781,
    "theta_ccr": 0.7853
   },
   {
    "county": "Kakamega",
-   "units": 592,
-   "cost_ksh": 1951900000,
-   "hfvs_mean": 0.1264,
-   "theta_ccr": 0.8233
+   "units": 232,
+   "cost_ksh": 764939232.0,
+   "hfvs_mean": 0.4621,
+   "theta_ccr": 0.8562
   },
   {
-   "county": "Bungoma",
-   "units": 326,
-   "cost_ksh": 1073000000,
-   "hfvs_mean": -0.0232,
-   "theta_ccr": 1.0
-  },
-  {
-   "county": "Nyandarua",
-   "units": 296,
-   "cost_ksh": 974800000,
-   "hfvs_mean": 0.1236,
-   "theta_ccr": 0.9612
+   "county": "Kisumu",
+   "units": 232,
+   "cost_ksh": 763626402.0,
+   "hfvs_mean": 0.4397,
+   "theta_ccr": 0.8384
   },
   {
    "county": "Nyeri",
    "units": 229,
-   "cost_ksh": 753800000,
-   "hfvs_mean": 0.0326,
+   "cost_ksh": 753751923.0,
+   "hfvs_mean": 0.3957,
+   "theta_ccr": 0.8346
+  },
+  {
+   "county": "Nyandarua",
+   "units": 227,
+   "cost_ksh": 747540456.0,
+   "hfvs_mean": 0.4349,
+   "theta_ccr": 0.751
+  },
+  {
+   "county": "Uasin Gishu",
+   "units": 209,
+   "cost_ksh": 687921277.0,
+   "hfvs_mean": 0.4348,
    "theta_ccr": 1.0
   },
   {
-   "county": "Migori",
-   "units": 202,
-   "cost_ksh": 665000000,
-   "hfvs_mean": 0.0752,
-   "theta_ccr": 1.0
-  },
-  {
-   "county": "Embu",
-   "units": 200,
-   "cost_ksh": 658300000,
-   "hfvs_mean": -0.0408,
-   "theta_ccr": 0.955
-  },
-  {
-   "county": "Garissa",
-   "units": 200,
-   "cost_ksh": 658300000,
-   "hfvs_mean": -0.3065,
-   "theta_ccr": 1.0
+   "county": "Bungoma",
+   "units": 205,
+   "cost_ksh": 674755934.0,
+   "hfvs_mean": 0.5127,
+   "theta_ccr": 0.7091
   }
  ]
 }

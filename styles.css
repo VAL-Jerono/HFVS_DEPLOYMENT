@@ -107,3 +107,25 @@ select { font: inherit; font-size: 13.5px; padding: 8px 12px; border-radius: 9px
   box-shadow: 0 6px 20px rgba(16,30,54,.18); color: var(--ink); padding: 8px 12px;
 }
 .leaflet-tooltip.county-hover::before { display: none; }
+
+/* ── Household Microdata Drill-Down Panel ── */
+.drilldown-card { position: relative; border-left: 4px solid var(--brand); animation: fade .25s ease; }
+.drilldown-header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.drilldown-header h3 { margin: 0; font-size: 18px; font-weight: 700; color: var(--ink); }
+.drilldown-kicker { font-size: 11px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--brand); margin-right: auto; width: 100%; }
+#drilldown-close { appearance: none; border: 0; background: #eef0f3; color: var(--muted); width: 28px; height: 28px; border-radius: 50%; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+#drilldown-close:hover { background: #e0e3e8; color: var(--ink); }
+
+.drilldown-notice { font-size: 12px; color: var(--muted); background: #f0f4f8; border: 1px solid #dce4ed; padding: 6px 12px; border-radius: 8px; margin: 6px 0 16px; }
+
+.drilldown-loading { display: flex; align-items: center; gap: 10px; padding: 24px 0; color: var(--muted); font-weight: 500; font-size: 14px; }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--line); border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.drilldown-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.drilldown-charts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+@media (max-width: 860px) { .drilldown-charts { grid-template-columns: 1fr; } }
+.drilldown-subchart { margin-top: 0; padding: 16px 18px; background: #fafbfc; border: 1px solid var(--line); }
+.drilldown-subchart h4 { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.drilldown-subchart p.muted { font-size: 12px; margin-bottom: 8px; }
+

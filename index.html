@@ -75,7 +75,48 @@
       </div>
       <div id="map"></div>
       <div class="map-legend-wrap"><div id="map-legend" class="map-legend"></div></div>
-      <p class="footnote">Hover a county for a quick read; click for its full profile.</p>
+      <p class="footnote">Hover a county for a quick read; click to select and see household microdata below.</p>
+    </div>
+
+    <!-- ── County household drill-down panel (DuckDB-WASM, client-side) ── -->
+    <div id="county-drilldown" class="card drilldown-card" style="display:none">
+      <div class="drilldown-header">
+        <span class="drilldown-kicker">Household microdata</span>
+        <h3 id="drilldown-title">County drill-down</h3>
+        <button id="drilldown-close" aria-label="Close drill-down" title="Close">✕</button>
+      </div>
+      <p class="drilldown-notice">
+        Aggregated view only — no individual rows are ever shown.
+        Slices with fewer than 10 households are suppressed at the query layer.
+      </p>
+      <div id="drilldown-loading" class="drilldown-loading" style="display:none">
+        <span class="spinner"></span> Loading household data…
+      </div>
+      <div id="drilldown-content" style="display:none">
+        <div class="drilldown-stats" id="drilldown-stats"></div>
+        <div class="drilldown-charts">
+          <div class="card drilldown-subchart">
+            <h4>Vulnerability tier distribution</h4>
+            <p class="muted">Share of surveyed households by HFVS tier within this county.</p>
+            <div class="chart-box"><canvas id="chart-drill-tiers"></canvas></div>
+          </div>
+          <div class="card drilldown-subchart">
+            <h4>Urban vs rural split</h4>
+            <p class="muted">Households by settlement type.</p>
+            <div class="chart-box"><canvas id="chart-drill-urban"></canvas></div>
+          </div>
+          <div class="card drilldown-subchart">
+            <h4>Vulnerability pillar profile</h4>
+            <p class="muted">Mean pillar score vs national average (higher = more stressed).</p>
+            <div class="chart-box"><canvas id="chart-drill-pillars"></canvas></div>
+          </div>
+          <div class="card drilldown-subchart">
+            <h4>Tenure type breakdown</h4>
+            <p class="muted">Housing tenure (owner-occupied vs renter). Code 1 = owner, 2 = tenant.</p>
+            <div class="chart-box"><canvas id="chart-drill-tenure"></canvas></div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="card chat-card">
       <h3>💬 Ask about the map</h3>
@@ -194,6 +235,8 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<!-- DuckDB-WASM: loaded on first county click, not on page load -->
+<script>window.DUCKDB_CDN="https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.29.0/dist/";</script>
 <script src="app.js"></script>
 </body>
 </html>

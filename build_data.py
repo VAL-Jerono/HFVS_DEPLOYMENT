@@ -177,7 +177,7 @@ with open(os.path.join(OUT, "national_summary.json"), "w") as f:
         "sbm_available": deploy_meta["available"],
         "sbm_mean_rho_bc": rd(_mean_of("rho_sbm_bc"), 4),
         "sbm_radial_masking_gap": rd((_mean_of("theta_ccr") or 0) - (_mean_of("rho_sbm_bc") or 0), 4),
-        "milp_regime_a_counties": 19,
+        "milp_regime_a_counties": sum(1 for c in counties if (c.get("units_A") or 0) > 0),
         "milp_regime_b_counties": 47,
         "milp_units_delivery_constrained": 6000,
         "milp_cost_delivery_constrained_ksh": 19750000000,
@@ -187,6 +187,14 @@ with open(os.path.join(OUT, "national_summary.json"), "w") as f:
         "fy24_25_completions": 1795,
         "aspirational_quota_units": 200000,
         "base_construction_cost_ksh": 3291489,
+        "limitations_note": (
+            "Regime A activation count is sensitive to NATIONAL_UNIT_QUOTA. "
+            "At the 6,000-unit quota, the national quota constraint -- not levy revenue -- "
+            "separates Regime A from Regime B; approximately KSh 53.45B of the annual "
+            "levy remains unspent under Regime A. The activation count reported here "
+            "is computed directly from the notebook's current deployment output and "
+            "will update automatically when build_data.py is re-run."
+        ),
     }, f, indent=1)
 print("national_summary.json")
 
@@ -230,8 +238,11 @@ with open(os.path.join(OUT, "milp.json"), "w") as f:
     _uplifted = sum(1 for c in counties if c.get("capacity_uplift_flag"))
     json.dump({
         "total_budget_ksh": 73200000000,
-        "regime_a": {"label": "Capital Concentration", "counties_activated": 19,
-                     "total_counties": 47, "total_units": 6000, "total_cost_ksh": 19750000000},
+        "regime_a": {"label": "Capital Concentration",
+                     "counties_activated": sum(1 for c in counties if (c.get("units_A") or 0) > 0),
+                     "total_counties": 47,
+                     "total_units": int(sum(c["units_A"] or 0 for c in counties)),
+                     "total_cost_ksh": sum(c["cost_A_ksh"] or 0 for c in counties)},
         "regime_b": {"label": "Universal Coverage", "counties_activated": 47,
                      "total_counties": 47, "total_units": 6000, "total_cost_ksh": 19750000000},
         "regime_c": {"label": "Capacity-Targeted (Option C)",
@@ -245,18 +256,14 @@ with open(os.path.join(OUT, "milp.json"), "w") as f:
                          "backlog_cost_ksh": 50580000000, "counties_activated": 47,
                          "fundable": True},
         "fy24_25_completions": 1795,
+        # ── top-10 computed from live deployment CSV (no hard-coded stale values) ──
         "top10_regime_a": [
-            {"county": "Nairobi", "units": 960, "cost_ksh": 3160200000, "hfvs_mean": 0.1770, "theta_ccr": 1.0000},
-            {"county": "Kisumu", "units": 659, "cost_ksh": 2169100000, "hfvs_mean": -0.0839, "theta_ccr": 0.8930},
-            {"county": "Nakuru", "units": 636, "cost_ksh": 2093400000, "hfvs_mean": 0.0369, "theta_ccr": 0.7853},
-            {"county": "Kakamega", "units": 592, "cost_ksh": 1951900000, "hfvs_mean": 0.1264, "theta_ccr": 0.8233},
-            {"county": "Bungoma", "units": 326, "cost_ksh": 1073000000, "hfvs_mean": -0.0232, "theta_ccr": 1.0000},
-            {"county": "Nyandarua", "units": 296, "cost_ksh": 974800000, "hfvs_mean": 0.1236, "theta_ccr": 0.9612},
-            {"county": "Nyeri", "units": 229, "cost_ksh": 753800000, "hfvs_mean": 0.0326, "theta_ccr": 1.0000},
-            {"county": "Migori", "units": 202, "cost_ksh": 665000000, "hfvs_mean": 0.0752, "theta_ccr": 1.0000},
-            {"county": "Embu", "units": 200, "cost_ksh": 658300000, "hfvs_mean": -0.0408, "theta_ccr": 0.9550},
-            {"county": "Garissa", "units": 200, "cost_ksh": 658300000, "hfvs_mean": -0.3065, "theta_ccr": 1.0000},
-        ],
+            {"county": c["county"], "units": c["units_A"] or 0,
+             "cost_ksh": rd(c["cost_A_ksh"] or 0, 0),
+             "hfvs_mean": rd(c["hfvs_mean"], 4), "theta_ccr": rd(c["theta_ccr"], 4)}
+            for c in sorted(counties, key=lambda x: -(x["units_A"] or 0))
+            if (c["units_A"] or 0) > 0
+        ][:10],
     }, f, indent=1)
 print("milp.json")
 

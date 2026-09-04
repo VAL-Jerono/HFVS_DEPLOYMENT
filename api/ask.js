@@ -16,7 +16,7 @@ function cached(name) {
 }
 
 // ---- Context packs: one per tab, kept small so prompts stay focused & cheap ----
-function buildContext(tab) {
+function buildContext(tab, countyDrilldown = null) {
   const nat = cached("national_summary.json");
   const counties = cached("county_metrics.json").counties;
   const pack = { national_summary: nat, note: "All numbers below are pre-computed from the executed HFVS notebook. Never invent or calculate new numbers; only explain, compare and contextualise these." };
@@ -26,6 +26,9 @@ function buildContext(tab) {
   } else if (tab === "map") {
     // give full county detail for the map tab
     pack.county_table = counties;
+    if (countyDrilldown) {
+      pack.selected_county_drilldown = countyDrilldown;
+    }
   } else if (tab === "model") {
     pack.shap_top_features = cached("shap.json").top_features;
   } else if (tab === "drivers") {
@@ -72,7 +75,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
-  const { tab = "analyst", question, history = [] } = req.body || {};
+  const { tab = "analyst", question, history = [], countyDrilldown } = req.body || {};
   if (!question || typeof question !== "string" || question.length > 2000) {
     return res.status(400).json({ error: "Provide a 'question' (max 2000 chars)." });
   }
@@ -84,7 +87,7 @@ export default async function handler(req, res) {
 
   const messages = [
     { role: "system", content: SYSTEM_PROMPT(tab) },
-    { role: "system", content: "CONTEXT PACK (the only data you may use):\n" + JSON.stringify(buildContext(tab)) },
+    { role: "system", content: "CONTEXT PACK (the only data you may use):\n" + JSON.stringify(buildContext(tab, countyDrilldown)) },
     ...history.slice(-6).filter(m => m.role && m.content).map(m => ({ role: m.role, content: String(m.content).slice(0, 2000) })),
     { role: "user", content: question },
   ];
