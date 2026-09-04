@@ -46,10 +46,15 @@
         <div class="chart-box"><canvas id="chart-tiers"></canvas></div>
       </div>
       <div class="card">
-        <h3>Vulnerability score by county</h3>
-        <p class="muted">Mean Housing Financial Vulnerability Score (HFVS) across all 47 counties.</p>
-        <div class="chart-box xtall"><canvas id="chart-pop-vuln"></canvas></div>
+        <h3>Top 10 Most Vulnerable Counties</h3>
+        <p class="muted">Counties with the highest mean vulnerability scores (HFVS).</p>
+        <div class="chart-box"><canvas id="chart-top10-vuln"></canvas></div>
       </div>
+    </div>
+    <div class="card">
+      <h3>National Vulnerability Distribution: Top 10 vs Most Resilient</h3>
+      <p class="muted">Comparing the 10 most vulnerable counties (red) against the 10 most resilient counties (emerald).</p>
+      <div class="chart-box tall"><canvas id="chart-vuln-compare"></canvas></div>
     </div>
     <div class="card chat-card">
       <h3>💬 Ask about this overview</h3>
@@ -80,7 +85,7 @@
       <p class="footnote">Hover over a county for quick metrics; click to select and inspect household microdata below.</p>
     </div>
 
-    <!-- ── County household drill-down panel (DuckDB-WASM, client-side) ── -->
+    <!-- ── County household drill-down panel ── -->
     <div id="county-drilldown" class="card drilldown-card" style="display:none">
       <div class="drilldown-header">
         <span class="drilldown-kicker">Household microdata</span>
@@ -171,6 +176,11 @@
         <div class="chart-box tall"><canvas id="chart-pillar-county"></canvas></div>
       </div>
     </div>
+    <div class="card">
+      <h3>Pillar Co-Vulnerability Interaction Profile</h3>
+      <p class="muted">Radar analysis demonstrating how tenure insecurity (D2) and financial stress (D1) compound in top-risk counties.</p>
+      <div class="chart-box tall"><canvas id="chart-pillar-radar"></canvas></div>
+    </div>
     <div class="card chat-card">
       <h3>💬 Ask about vulnerability drivers</h3>
       <div class="chat" data-chat-tab="drivers"></div>
@@ -187,9 +197,10 @@
     <div class="stat-grid" id="budget-stats"></div>
     <div class="grid-2">
       <div class="card">
-        <h3>Regime A vs Regime B allocation comparison</h3>
+        <h3>Policy Allocation Regimes Comparison</h3>
+        <p class="muted">Regime A (Concentration), Regime B (Universal Equity), and Option C (Capacity Uplift).</p>
         <div class="chart-box"><canvas id="chart-regimes"></canvas></div>
-        <p class="footnote">Regime A concentrates units in top-capacity hubs (26 counties activated); Regime B mandates universal coverage across all 47 counties.</p>
+        <p class="footnote">Regime A concentrates units in 26 top-capacity hubs; Regime B mandates universal 47-county coverage; Option C uplifts delivery ceilings by +50% in capacity-constrained counties.</p>
       </div>
       <div class="card">
         <h3>Binding constraint breakdown (Regime A)</h3>
@@ -215,8 +226,20 @@
       <div class="chart-box"><canvas id="chart-consistency"></canvas></div>
     </div>
     <div class="card">
-      <h3>County allocation details (Regime A, top 15)</h3>
+      <div class="table-header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+        <h3>Complete County Resource Allocations (All 47 Counties)</h3>
+        <div class="table-search-box">
+          <input type="text" id="table-search" placeholder="Search county..." style="font:inherit; font-size:13px; padding:6px 12px; border-radius:8px; border:1px solid var(--card-border); background:rgba(15,23,42,0.8); color:#fff;">
+        </div>
+      </div>
       <div class="table-wrap"><table id="budget-table" class="data-table"></table></div>
+      <div class="pagination-row" style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; font-size:13px; color:var(--muted);">
+        <span id="pagination-info">Showing rows 1-5 of 47</span>
+        <div class="pagination-controls" style="display:flex; gap:8px;">
+          <button id="btn-prev-page" class="sugg" style="padding:4px 12px; border-radius:6px;">← Previous</button>
+          <button id="btn-next-page" class="sugg" style="padding:4px 12px; border-radius:6px;">Next →</button>
+        </div>
+      </div>
     </div>
     <div class="card chat-card">
       <h3>💬 Ask about the budget</h3>
